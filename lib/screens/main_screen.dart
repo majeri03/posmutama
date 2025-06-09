@@ -14,9 +14,8 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  // Daftar halaman yang akan ditampilkan
-  static const List<Widget> _widgetOptions = <Widget>[
-    PosScreen(),
+  static const List<Widget> _screens = <Widget>[
+    POSScreen(),
     InventoryScreen(),
     ReportsScreen(),
     CustomersScreen(),
@@ -32,7 +31,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: _widgetOptions.elementAt(_selectedIndex),
+        child: _screens.elementAt(_selectedIndex),
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
@@ -41,11 +40,11 @@ class _MainScreenState extends State<MainScreen> {
             label: 'Kasir',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.inventory_2),
+            icon: Icon(Icons.inventory),
             label: 'Inventaris',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
+            icon: Icon(Icons.assessment),
             label: 'Laporan',
           ),
           BottomNavigationBarItem(
@@ -54,10 +53,9 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Theme.of(context).primaryColor,
+        selectedItemColor: Colors.indigo,
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed, // Agar label selalu terlihat
       ),
     );
   }

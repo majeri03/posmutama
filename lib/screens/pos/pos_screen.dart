@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:pos_mutama/models/customer.dart';
@@ -7,173 +8,209 @@ import 'package:pos_mutama/providers/cart_provider.dart';
 import 'package:pos_mutama/providers/customer_provider.dart';
 import 'package:pos_mutama/providers/item_provider.dart';
 import 'package:pos_mutama/providers/transaction_provider.dart';
-import 'package:pos_mutama/screens/inventory/inventory_screen.dart';
 import 'package:pos_mutama/screens/pos/receipt_screen.dart';
-import 'package:pos_mutama/screens/pos/scanner_screen.dart'; // Impor halaman scanner baru
+import 'package:pos_mutama/screens/pos/scanner_screen.dart';
 
-class PosScreen extends ConsumerWidget {
-  const PosScreen({super.key});
+class POSScreen extends ConsumerStatefulWidget {
+  const POSScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final cartState = ref.watch(cartProvider);
-    final numberFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ');
+  ConsumerState<POSScreen> createState() => _POSScreenState();
+}
 
-    // Fungsi untuk scan barcode (DIGANTI)
-    Future<void> scanBarcodeAndAddItem() async {
-      final scaffoldMessenger = ScaffoldMessenger.of(context);
+class _POSScreenState extends ConsumerState<POSScreen> {
+  final _searchController = TextEditingController();
+  List<Item> _searchedItems = [];
 
-      final barcode = await Navigator.push<String>(
-        context,
-        MaterialPageRoute(builder: (context) => const ScannerScreen()),
-      );
-      
-      if (barcode != null && context.mounted) {
-        final allItems = ref.read(itemProvider);
-        final foundItem = allItems.firstWhere(
-          (item) => item.barcode == barcode,
-          orElse: () => Item(id: '', namaBarang: '', hargaBeli: 0, hargaJual: 0, stok: -1, unit: '', tanggalDitambahkan: DateTime.now()),
-        );
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() {
+        _searchedItems = ref.read(itemProvider.notifier).searchItems(_searchController.text);
+      });
+    });
+  }
 
-        if (foundItem.stok != -1) {
-          ref.read(cartProvider.notifier).addItemToCart(foundItem);
-        } else {
-            scaffoldMessenger.showSnackBar(
-             const SnackBar(content: Text('Barang dengan barcode ini tidak ditemukan.')),
-           );
-        }
-      }
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _showPaymentDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => const PaymentDialog(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cart = ref.watch(cartProvider);
+    final totalAmount = ref.watch(cartProvider.notifier).totalAmount;
+    final allItems = ref.watch(itemProvider);
+    if (_searchedItems.isEmpty && _searchController.text.isEmpty) {
+      _searchedItems = allItems;
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kasir (POS)'),
+        title: const Text('Kasir'),
         actions: [
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
-            onPressed: scanBarcodeAndAddItem,
-            tooltip: 'Scan Barcode',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const ScannerScreen()),
+              );
+            },
           ),
         ],
       ),
-      body: Column(
+      body: Row(
         children: [
           Expanded(
             flex: 2,
-            child: cartState.items.isEmpty
-                ? const Center(child: Text('Keranjang masih kosong.\nScan atau cari barang untuk memulai.'))
-                : ListView.builder(
-                    itemCount: cartState.items.length,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Cari item atau scan barcode...',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: GridView.builder(
+                    padding: const EdgeInsets.all(8.0),
+                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 200,
+                      childAspectRatio: 3 / 2,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                    ),
+                    itemCount: _searchedItems.length,
                     itemBuilder: (context, index) {
-                      final cartItem = cartState.items[index];
-                      return ListTile(
-                        title: Text(cartItem.namaBarang),
-                        subtitle: Text(numberFormat.format(cartItem.hargaJualSaatTransaksi)),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.remove_circle_outline),
-                              onPressed: () => ref.read(cartProvider.notifier).removeItemFromCart(cartItem.idBarang),
+                      final item = _searchedItems[index];
+                      return Card(
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: item.stock > 0 ? () => ref.read(cartProvider.notifier).addItem(item) : null,
+                          child: GridTile(
+                            footer: GridTileBar(
+                              backgroundColor: Colors.black45,
+                              title: Text(item.name, overflow: TextOverflow.ellipsis),
+                              subtitle: Text('Stok: ${item.stock}'),
                             ),
-                            Text(cartItem.jumlahBeli.toString(), style: const TextStyle(fontSize: 16)),
-                            IconButton(
-                              icon: const Icon(Icons.add_circle_outline),
-                              onPressed: () {
-                                final itemMaster = ref.read(itemProvider).firstWhere((i) => i.id == cartItem.idBarang);
-                                ref.read(cartProvider.notifier).addItemToCart(itemMaster);
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_forever, color: Colors.red),
-                              onPressed: () => ref.read(cartProvider.notifier).clearItemFromCart(cartItem.idBarang),
-                            ),
-                          ],
+                            child: item.stock <= 0
+                                ? Container(
+                                    color: Colors.black54,
+                                    child: const Center(
+                                        child: Text('Stok Habis',
+                                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))))
+                                : Container(color: Colors.indigo.shade100, child: const Icon(Icons.add_shopping_cart)),
+                          ),
                         ),
                       );
                     },
                   ),
+                ),
+              ],
+            ),
           ),
-          const Divider(thickness: 2),
-          
           Expanded(
-            flex: 3,
-            child: Consumer(builder: (context, ref, _) {
-              final items = ref.watch(filteredItemsProvider);
-              return Column(
+            flex: 1,
+            child: Card(
+              margin: const EdgeInsets.all(8.0),
+              child: Column(
                 children: [
-                   Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: TextField(
-                      decoration: const InputDecoration(
-                        hintText: 'Cari barang...',
-                        prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(25.0))),
-                      ),
-                      onChanged: (value) => ref.read(searchQueryProvider.notifier).state = value,
-                    ),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text('Keranjang', style: Theme.of(context).textTheme.headlineSmall),
                   ),
                   Expanded(
-                    child: ListView.builder(
-                      itemCount: items.length,
-                      itemBuilder: (context, index) {
-                        final item = items[index];
-                        return ListTile(
-                          title: Text(item.namaBarang),
-                          subtitle: Text('Stok: ${item.stok} | ${numberFormat.format(item.hargaJual)}'),
-                          onTap: item.stok > 0
-                              ? () => ref.read(cartProvider.notifier).addItemToCart(item)
-                              : null,
-                          tileColor: item.stok <= 0 ? Colors.grey.withAlpha(77) : null,
-                        );
-                      },
-                    ),
+                    child: cart.isEmpty
+                        ? const Center(child: Text('Keranjang kosong'))
+                        : ListView.builder(
+                            itemCount: cart.length,
+                            itemBuilder: (context, index) {
+                              final cartItem = cart[index];
+                              return ListTile(
+                                title: Text(cartItem.name),
+                                subtitle: Text('${cartItem.quantity} x Rp ${cartItem.price}'),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.remove_circle_outline),
+                                      onPressed: () => ref.read(cartProvider.notifier).decreaseQuantity(cartItem.id),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.add_circle_outline),
+                                      onPressed: () {
+                                        final originalItem = allItems.firstWhere((item) => item.id == cartItem.id);
+                                        if (cartItem.quantity < originalItem.stock) {
+                                          ref.read(cartProvider.notifier).increaseQuantity(cartItem.id);
+                                        } else {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Stok tidak mencukupi')),
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                   ),
+                  const Divider(),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Total:', style: Theme.of(context).textTheme.titleLarge),
+                            Text('Rp $totalAmount', style: Theme.of(context).textTheme.titleLarge),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: cart.isNotEmpty ? _showPaymentDialog : null,
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              backgroundColor: Colors.indigo,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Bayar'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
                 ],
-              );
-            }),
+              ),
+            ),
           ),
         ],
       ),
-      bottomNavigationBar: cartState.items.isEmpty
-          ? null
-          : BottomAppBar(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Total: ${numberFormat.format(cartState.total)}', style: Theme.of(context).textTheme.headlineSmall),
-                    ElevatedButton.icon(
-                      onPressed: () => _showPaymentDialog(context, ref, cartState.total),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        textStyle: const TextStyle(fontSize: 18),
-                      ),
-                      icon: const Icon(Icons.payment),
-                      label: const Text('Bayar'),
-                    )
-                  ],
-                ),
-              ),
-            ),
-    );
-  }
-
-  void _showPaymentDialog(BuildContext context, WidgetRef ref, int totalBelanja) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return PaymentDialog(totalBelanja: totalBelanja);
-      },
     );
   }
 }
 
-
 class PaymentDialog extends ConsumerStatefulWidget {
-  final int totalBelanja;
-  const PaymentDialog({required this.totalBelanja, super.key});
+  const PaymentDialog({super.key});
 
   @override
   ConsumerState<PaymentDialog> createState() => _PaymentDialogState();
@@ -181,105 +218,178 @@ class PaymentDialog extends ConsumerStatefulWidget {
 
 class _PaymentDialogState extends ConsumerState<PaymentDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _paymentController = TextEditingController();
-
-  String _paymentMethod = 'Cash';
-  String _paymentStatus = 'Lunas';
+  final _paidAmountController = TextEditingController();
   Customer? _selectedCustomer;
+  String _paymentStatus = 'Lunas';
+  String _paymentMethod = 'Tunai';
+  int _changeAmount = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    _paymentController.text = widget.totalBelanja.toString();
-  }
-  
   @override
   void dispose() {
-    _paymentController.dispose();
+    _paidAmountController.dispose();
     super.dispose();
+  }
+  
+  void _calculateChange() {
+    final totalAmount = ref.read(cartProvider.notifier).totalAmount;
+    final paidAmount = int.tryParse(_paidAmountController.text) ?? 0;
+    setState(() {
+      _changeAmount = paidAmount - totalAmount;
+    });
+  }
+
+
+  void _processPayment() {
+    if (_formKey.currentState!.validate()) {
+      final cart = ref.read(cartProvider);
+      final totalAmount = ref.read(cartProvider.notifier).totalAmount;
+      final paidAmount = int.tryParse(_paidAmountController.text) ?? 0;
+      
+      if (_paymentStatus == 'Lunas' && paidAmount < totalAmount) {
+         ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Jumlah bayar kurang dari total belanja')),
+          );
+        return;
+      }
+
+      ref.read(transactionProvider.notifier).addTransaction(
+        items: cart,
+        totalAmount: totalAmount,
+        customer: _selectedCustomer,
+        status: _paymentStatus,
+        paidAmount: _paymentStatus == 'Lunas' ? paidAmount : 0,
+        changeAmount: _paymentStatus == 'Lunas' ? _changeAmount : 0,
+        paymentMethod: _paymentStatus == 'Lunas' ? _paymentMethod : 'N/A',
+      );
+
+      for (var cartItem in cart) {
+        ref.read(itemProvider.notifier).updateStock(cartItem.id, cartItem.quantity);
+      }
+
+      final lastTransaction = ref.read(transactionProvider).first;
+
+      ref.read(cartProvider.notifier).clearCart();
+      
+      Navigator.of(context).pop(); // Close dialog
+      
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => ReceiptScreen(transaction: lastTransaction),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final customers = ref.watch(customerProvider);
+    final totalAmount = ref.watch(cartProvider.notifier).totalAmount;
+    final numberFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
     return AlertDialog(
-      title: const Text('Proses Pembayaran'),
-      content: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Total Belanja: ${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ').format(widget.totalBelanja)}',
-                  style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _paymentController,
-                decoration: const InputDecoration(labelText: 'Jumlah Bayar'),
-                keyboardType: TextInputType.number,
-                validator: (value) => value!.isEmpty ? 'Tidak boleh kosong' : null,
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _paymentMethod,
-                decoration: const InputDecoration(labelText: 'Metode Pembayaran'),
-                items: ['Cash', 'Transfer'].map((String value) {
-                  return DropdownMenuItem<String>(value: value, child: Text(value));
-                }).toList(),
-                onChanged: (value) => setState(() => _paymentMethod = value!),
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _paymentStatus,
-                decoration: const InputDecoration(labelText: 'Status Pembayaran'),
-                items: ['Lunas', 'Belum Lunas', 'DP'].map((String value) {
-                  return DropdownMenuItem<String>(value: value, child: Text(value));
-                }).toList(),
-                onChanged: (value) => setState(() => _paymentStatus = value!),
-              ),
-              if (_paymentStatus != 'Lunas') ...[
-                const SizedBox(height: 16),
-                DropdownButtonFormField<Customer>(
-                  value: _selectedCustomer,
-                  decoration: const InputDecoration(labelText: 'Pilih Pelanggan'),
-                  items: customers.map((Customer customer) {
-                    return DropdownMenuItem<Customer>(value: customer, child: Text(customer.namaPelanggan));
-                  }).toList(),
-                  onChanged: (value) => setState(() => _selectedCustomer = value!),
-                  validator: (value) => value == null ? 'Pelanggan harus dipilih untuk utang' : null,
-                ),
+      title: const Text('Pembayaran'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.4,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                 Text(numberFormat.format(totalAmount), style: Theme.of(context).textTheme.headlineMedium),
+                 const SizedBox(height: 16),
+                 DropdownButtonFormField<Customer?>(
+                    value: _selectedCustomer,
+                    decoration: const InputDecoration(labelText: 'Pelanggan (Opsional)'),
+                    items: [
+                      const DropdownMenuItem<Customer?>(
+                        value: null,
+                        child: Text('Pelanggan Umum'),
+                      ),
+                      ...customers.map((customer) => DropdownMenuItem(
+                            value: customer,
+                            child: Text(customer.name),
+                          )),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedCustomer = value;
+                      });
+                    },
+                  ),
+                 const SizedBox(height: 16),
+                 DropdownButtonFormField<String>(
+                    value: _paymentStatus,
+                    decoration: const InputDecoration(labelText: 'Status Pembayaran'),
+                    items: ['Lunas', 'Belum Lunas']
+                        .map((status) => DropdownMenuItem(
+                              value: status,
+                              child: Text(status),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _paymentStatus = value!;
+                        if (_paymentStatus == 'Belum Lunas') {
+                          _paidAmountController.clear();
+                          _changeAmount = 0;
+                        }
+                      });
+                    },
+                  ),
+                 const SizedBox(height: 16),
+                 TextFormField(
+                    controller: _paidAmountController,
+                    decoration: const InputDecoration(labelText: 'Jumlah Bayar'),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    enabled: _paymentStatus == 'Lunas',
+                    onChanged: (_) => _calculateChange(),
+                    validator: (value){
+                      if(_paymentStatus == 'Lunas' && (value == null || value.isEmpty)){
+                        return 'Jumlah bayar tidak boleh kosong';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                 DropdownButtonFormField<String>(
+                    value: _paymentMethod,
+                    decoration: const InputDecoration(labelText: 'Metode Pembayaran'),
+                    items: ['Tunai', 'Transfer', 'QRIS']
+                        .map((method) => DropdownMenuItem(
+                              value: method,
+                              child: Text(method),
+                            ))
+                        .toList(),
+                    onChanged: _paymentStatus == 'Lunas' ? (value) {
+                      setState(() {
+                        _paymentMethod = value!;
+                      });
+                    } : null,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                       const Text('Kembalian:'),
+                       Text(numberFormat.format(_changeAmount < 0 ? 0 : _changeAmount), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
               ],
-            ],
+            ),
           ),
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Batal'),
+        ),
         ElevatedButton(
-          onPressed: () async {
-            if (_formKey.currentState!.validate()) {
-              final navigator = Navigator.of(context);
-              final newTransaction = await ref.read(transactionProvider.notifier).addTransaction(
-                    items: ref.read(cartProvider).items,
-                    totalBelanja: widget.totalBelanja,
-                    totalBayar: int.parse(_paymentController.text),
-                    metodePembayaran: _paymentMethod,
-                    statusPembayaran: _paymentStatus,
-                    pelanggan: _selectedCustomer,
-                  );
-
-              if (newTransaction != null) {
-                ref.read(cartProvider.notifier).clearCart();
-                navigator.pop();
-                navigator.pushReplacement(
-                  MaterialPageRoute(builder: (context) => ReceiptScreen(transaction: newTransaction)),
-                );
-              }
-            }
-          },
-          child: const Text('Proses & Cetak'),
-        )
+          onPressed: _processPayment,
+          child: const Text('Proses'),
+        ),
       ],
     );
   }

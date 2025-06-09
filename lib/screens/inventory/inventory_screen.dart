@@ -1,122 +1,141 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:pos_mutama/models/item.dart';
 import 'package:pos_mutama/providers/item_provider.dart';
 import 'package:pos_mutama/screens/inventory/add_edit_item_screen.dart';
 import 'package:pos_mutama/utils/csv_helper.dart';
 
-// Provider untuk state pencarian
-final searchQueryProvider = StateProvider<String>((ref) => '');
-
-// Provider turunan (derived) untuk memfilter daftar barang berdasarkan pencarian
-final filteredItemsProvider = Provider<List<Item>>((ref) {
-  final items = ref.watch(itemProvider);
-  final query = ref.watch(searchQueryProvider).toLowerCase();
-
-  if (query.isEmpty) {
-    return items;
-  }
-
-  return items.where((item) {
-    final nameMatch = item.namaBarang.toLowerCase().contains(query);
-    final barcodeMatch = item.barcode?.toLowerCase().contains(query) ?? false;
-    return nameMatch || barcodeMatch;
-  }).toList();
-});
-
-class InventoryScreen extends ConsumerWidget {
+class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Mendengarkan perubahan pada daftar barang yang sudah difilter
-    final filteredItems = ref.watch(filteredItemsProvider);
-    final allItems = ref.watch(itemProvider); // Untuk ekspor semua data
-    final numberFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ');
+  ConsumerState<InventoryScreen> createState() => _InventoryScreenState();
+}
+
+class _InventoryScreenState extends ConsumerState<InventoryScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = ref.watch(itemProvider).where((item) {
+      return item.name.toLowerCase().contains(_searchQuery.toLowerCase());
+    }).toList();
+    final numberFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Inventaris Barang'),
+        title: const Text('Inventaris'),
         actions: [
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'import') {
-                CsvHelper.importItemsFromCsv(context, ref);
-              } else if (value == 'export') {
-                CsvHelper.exportItemsToCsv(context, allItems);
-              }
+          IconButton(
+            icon: const Icon(Icons.file_upload),
+            onPressed: () async {
+              final result = await importItemsFromCsv(ref);
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
             },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              const PopupMenuItem<String>(
-                value: 'import',
-                child: ListTile(leading: Icon(Icons.upload_file), title: Text('Import dari CSV')),
-              ),
-              const PopupMenuItem<String>(
-                value: 'export',
-                child: ListTile(leading: Icon(Icons.download_for_offline), title: Text('Export ke CSV')),
-              ),
-            ],
+          ),
+          IconButton(
+            icon: const Icon(Icons.file_download),
+            onPressed: () async {
+              await exportItemsToCsv(items);
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Data item diekspor')));
+            },
           ),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(60.0),
-          child: Padding(
+      ),
+      body: Column(
+        children: [
+          Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
+              controller: _searchController,
               decoration: const InputDecoration(
-                hintText: 'Cari barang (nama atau barcode)...',
+                hintText: 'Cari item...',
                 prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(25.0)),
-                ),
               ),
-              // Setiap kali teks berubah, perbarui state pencarian
-              onChanged: (value) {
-                ref.read(searchQueryProvider.notifier).state = value;
-              },
             ),
           ),
-        ),
-      ),
-      body: filteredItems.isEmpty
-          ? const Center(child: Text('Tidak ada barang. Silakan tambah.'))
-          : ListView.builder(
-              itemCount: filteredItems.length,
-              itemBuilder: (context, index) {
-                final item = filteredItems[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: ListTile(
-                    title: Text(item.namaBarang),
-                    subtitle: Text(
-                      'Stok: ${item.stok} ${item.unit} | Harga: ${numberFormat.format(item.hargaJual)}',
-                    ),
-                    trailing: const Icon(Icons.arrow_forward_ios),
-                    onTap: () {
-                      // Navigasi ke halaman edit saat item di-tap
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AddEditItemScreen(item: item),
+          Expanded(
+            child: items.isEmpty
+                ? const Center(child: Text('Tidak ada item.'))
+                : ListView.builder(
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        child: ListTile(
+                          title: Text(item.name),
+                          subtitle: Text('Stok: ${item.stock}'),
+                          trailing: Text(numberFormat.format(item.price)),
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: Text(item.name),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Stok: ${item.stock}'),
+                                    Text('Harga Jual: ${numberFormat.format(item.price)}'),
+                                    Text('Harga Beli: ${numberFormat.format(item.purchasePrice)}'),
+                                    Text('Barcode: ${item.barcode ?? '-'}'),
+                                  ],
+                                ),
+                                actions: [
+                                  TextButton(
+                                    child: const Text('Tutup'),
+                                    onPressed: () => Navigator.of(ctx).pop(),
+                                  ),
+                                  TextButton(
+                                    child: const Text('Edit'),
+                                    onPressed: () {
+                                      Navigator.of(ctx).pop();
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) => AddEditItemScreen(item: item),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         ),
                       );
                     },
                   ),
-                );
-              },
-            ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Navigasi ke halaman tambah (tanpa mengirim item)
-          Navigator.push(
-            context,
+          Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => const AddEditItemScreen(),
             ),
           );
         },
-        tooltip: 'Tambah Barang Baru',
         child: const Icon(Icons.add),
       ),
     );

@@ -2,40 +2,32 @@ import 'package:hive/hive.dart';
 
 part 'item.g.dart';
 
-@HiveType(typeId: 0)
+@HiveType(typeId: 1)
 class Item extends HiveObject {
   @HiveField(0)
   String id;
 
   @HiveField(1)
-  String namaBarang;
+  String name;
 
   @HiveField(2)
-  String? barcode;
+  int price;
 
   @HiveField(3)
-  int hargaBeli;
+  int stock;
 
   @HiveField(4)
-  int hargaJual;
+  String? barcode;
 
   @HiveField(5)
-  int stok;
-
-  @HiveField(6)
-  String unit;
-
-  @HiveField(7)
-  DateTime tanggalDitambahkan;
+  double purchasePrice;
 
   Item({
     required this.id,
-    required this.namaBarang,
+    required this.name,
+    required this.price,
+    required this.stock,
     this.barcode,
-    required this.hargaBeli,
-    required this.hargaJual,
-    required this.stok,
-    required this.unit,
-    required this.tanggalDitambahkan,
+    required this.purchasePrice,
   });
 }

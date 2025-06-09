@@ -2,33 +2,28 @@ import 'package:hive/hive.dart';
 
 part 'transaction_item.g.dart';
 
-// Model ini tidak menjadi HiveObject karena akan disimpan sebagai bagian dari list di dalam Transaction
 @HiveType(typeId: 3)
-class TransactionItem {
+class TransactionItem extends HiveObject {
   @HiveField(0)
-  String idBarang;
+  String id;
 
   @HiveField(1)
-  String namaBarang;
+  String name;
 
   @HiveField(2)
-  int hargaJualSaatTransaksi;
+  int price;
 
   @HiveField(3)
-  int jumlahBeli;
-
-  @HiveField(4)
-  int subtotal;
+  int quantity;
   
-  @HiveField(5)
-  int hargaBeliSaatTransaksi; // Diperlukan untuk menghitung keuntungan
+  @HiveField(4)
+  double purchasePrice;
 
   TransactionItem({
-    required this.idBarang,
-    required this.namaBarang,
-    required this.hargaJualSaatTransaksi,
-    required this.jumlahBeli,
-    required this.subtotal,
-    required this.hargaBeliSaatTransaksi,
+    required this.id,
+    required this.name,
+    required this.price,
+    required this.quantity,
+    required this.purchasePrice,
   });
 }

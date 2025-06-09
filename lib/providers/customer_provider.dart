@@ -1,66 +1,47 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive/hive.dart';
 import 'package:pos_mutama/models/customer.dart';
 import 'package:pos_mutama/services/hive_service.dart';
-import 'package:pos_mutama/providers/item_provider.dart'; // Untuk mengakses hiveServiceProvider
 import 'package:uuid/uuid.dart';
 
-// Provider untuk state notifier pelanggan
 final customerProvider = StateNotifierProvider<CustomerNotifier, List<Customer>>((ref) {
-  final hiveService = ref.watch(hiveServiceProvider);
-  return CustomerNotifier(hiveService);
+  return CustomerNotifier();
 });
 
-// Kelas Notifier untuk logika bisnis pelanggan
 class CustomerNotifier extends StateNotifier<List<Customer>> {
-  final HiveService _hiveService;
+  final Box<Customer> _box;
+  final _uuid = const Uuid();
 
-  // Constructor: memuat data awal dari Hive
-  CustomerNotifier(this._hiveService) : super([]) {
-    loadCustomers();
+  CustomerNotifier()
+      : _box = Hive.box<Customer>(HiveService.customersBoxName),
+        super([]) {
+    state = _box.values.toList();
   }
 
-  // Memuat semua pelanggan dan memperbarui state
-  void loadCustomers() {
-    state = _hiveService.getAllCustomers()
-      ..sort((a, b) => a.namaPelanggan.toLowerCase().compareTo(b.namaPelanggan.toLowerCase()));
-  }
-
-  // Menambah pelanggan baru
-  void addCustomer({
-    required String namaPelanggan,
-    String? noHp,
-    String? alamat,
-  }) {
+  Future<void> addCustomer(String name, String? phone, String? address) async {
     final newCustomer = Customer(
-      id: const Uuid().v4(), // ID unik
-      namaPelanggan: namaPelanggan,
-      noHp: noHp,
-      alamat: alamat,
-      totalUtang: 0, // Utang awal selalu 0
+      id: _uuid.v4(),
+      name: name,
+      phone: phone,
+      address: address,
     );
-    _hiveService.saveCustomer(newCustomer);
-    loadCustomers(); // Muat ulang daftar
+    await _box.put(newCustomer.id, newCustomer);
+    state = _box.values.toList();
   }
 
-  // Memperbarui data pelanggan
-  void updateCustomer(Customer updatedCustomer) {
-    _hiveService.saveCustomer(updatedCustomer);
-    loadCustomers(); // Muat ulang daftar
-  }
-  
-  // Memperbarui utang pelanggan
-  void updateCustomerDebt(String customerId, int amount) {
-    final customer = _hiveService.getCustomer(customerId);
+  Future<void> editCustomer(String id, String name, String? phone, String? address) async {
+    final customer = _box.get(id);
     if (customer != null) {
-        customer.totalUtang += amount;
-        _hiveService.saveCustomer(customer);
-        loadCustomers();
+      customer.name = name;
+      customer.phone = phone;
+      customer.address = address;
+      await customer.save();
+      state = _box.values.toList();
     }
   }
 
-  // Menghapus pelanggan
-  void deleteCustomer(String id) {
-    _hiveService.deleteCustomer(id);
-    loadCustomers(); // Muat ulang daftar
+  Future<void> deleteCustomer(String id) async {
+    await _box.delete(id);
+    state = _box.values.toList();
   }
 }

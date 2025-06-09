@@ -1,87 +1,69 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive/hive.dart';
 import 'package:pos_mutama/models/item.dart';
 import 'package:pos_mutama/services/hive_service.dart';
 import 'package:uuid/uuid.dart';
 
-// 1. Provider untuk instance HiveService.
-// Ini adalah provider sederhana yang hanya membuat dan menyediakan instance HiveService
-// agar bisa diakses oleh provider lain.
-final hiveServiceProvider = Provider<HiveService>((ref) => HiveService());
-
-// 2. Provider untuk State Notifier Inventaris.
-// Ini adalah provider utama yang akan Anda gunakan di UI untuk mendapatkan data
-// dan memanggil fungsi-fungsi terkait manajemen barang.
 final itemProvider = StateNotifierProvider<ItemNotifier, List<Item>>((ref) {
-  // Mengambil instance HiveService dari provider di atas.
-  final hiveService = ref.watch(hiveServiceProvider);
-  // Menginisialisasi Notifier dengan daftar barang awal dari database.
-  return ItemNotifier(hiveService);
+  return ItemNotifier();
 });
 
-// Kelas Notifier yang berisi state (data) dan logika (fungsi) untuk
-// memanipulasi state inventaris.
 class ItemNotifier extends StateNotifier<List<Item>> {
-  final HiveService _hiveService;
+  final Box<Item> _box;
+  final _uuid = const Uuid();
 
-  // Constructor: saat Notifier pertama kali dibuat, ia akan memuat
-  // data awal dari HiveService.
-  ItemNotifier(this._hiveService) : super([]) {
-    loadItems();
+  ItemNotifier()
+      : _box = Hive.box<Item>(HiveService.itemsBoxName),
+        super([]) {
+    state = _box.values.toList();
   }
 
-  // Memuat semua barang dari database dan memperbarui state.
-  // Ini akan secara otomatis memberi tahu UI untuk me-render ulang.
-  void loadItems() {
-    state = _hiveService.getAllItems()
-      // Mengurutkan berdasarkan tanggal ditambahkannya, yang terbaru di atas.
-      ..sort((a, b) => b.tanggalDitambahkan.compareTo(a.tanggalDitambahkan));
-  }
-
-  // Menambah barang baru ke database.
-  void addItem({
-    required String namaBarang,
-    String? barcode,
-    required int hargaBeli,
-    required int hargaJual,
-    required int stok,
-    required String unit,
-  }) {
+  Future<void> addItem(String name, int price, int stock, String? barcode, double purchasePrice) async {
     final newItem = Item(
-      id: const Uuid().v4(), // Membuat ID unik untuk barang baru
-      namaBarang: namaBarang,
+      id: _uuid.v4(),
+      name: name,
+      price: price,
+      stock: stock,
       barcode: barcode,
-      hargaBeli: hargaBeli,
-      hargaJual: hargaJual,
-      stok: stok,
-      unit: unit,
-      tanggalDitambahkan: DateTime.now(),
+      purchasePrice: purchasePrice,
     );
-    _hiveService.saveItem(newItem);
-    loadItems(); // Memuat ulang daftar untuk menampilkan data baru di UI.
+    await _box.put(newItem.id, newItem);
+    state = _box.values.toList();
   }
 
-  // Memperbarui data barang yang sudah ada.
-  void updateItem(Item updatedItem) {
-    _hiveService.saveItem(updatedItem);
-    loadItems(); // Memuat ulang untuk menampilkan perubahan di UI.
-  }
-  
-  // Mengurangi stok barang (akan digunakan nanti saat terjadi penjualan di kasir).
-  void decreaseStock(String itemId, int quantity) {
-    final item = _hiveService.getItem(itemId);
+  Future<void> editItem(String id, String name, int price, int stock, String? barcode, double purchasePrice) async {
+    final item = _box.get(id);
     if (item != null) {
-      // Pastikan stok tidak menjadi negatif.
-      if (item.stok >= quantity) {
-        item.stok -= quantity;
-        _hiveService.saveItem(item);
-        loadItems();
-      }
+      item.name = name;
+      item.price = price;
+      item.stock = stock;
+      item.barcode = barcode;
+      item.purchasePrice = purchasePrice;
+      await item.save();
+      state = _box.values.toList();
     }
   }
 
-  // Menghapus barang dari database.
-  void deleteItem(String id) {
-    _hiveService.deleteItem(id);
-    loadItems(); // Memuat ulang daftar.
+  Future<void> deleteItem(String id) async {
+    await _box.delete(id);
+    state = _box.values.toList();
+  }
+
+  void updateStock(String id, int quantitySold) {
+    final item = _box.get(id);
+    if (item != null) {
+      item.stock -= quantitySold;
+      item.save();
+      state = _box.values.toList();
+    }
+  }
+
+  List<Item> searchItems(String query) {
+    if (query.isEmpty) {
+      return state;
+    }
+    return state.where((item) {
+      return item.name.toLowerCase().contains(query.toLowerCase()) || (item.barcode?.contains(query) ?? false);
+    }).toList();
   }
 }

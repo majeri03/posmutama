@@ -14,19 +14,16 @@ class AddEditCustomerScreen extends ConsumerStatefulWidget {
 
 class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   final _formKey = GlobalKey<FormState>();
-
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
   late TextEditingController _addressController;
 
-  bool get _isEditMode => widget.customer != null;
-
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.customer?.namaPelanggan ?? '');
-    _phoneController = TextEditingController(text: widget.customer?.noHp ?? '');
-    _addressController = TextEditingController(text: widget.customer?.alamat ?? '');
+    _nameController = TextEditingController(text: widget.customer?.name ?? '');
+    _phoneController = TextEditingController(text: widget.customer?.phone ?? '');
+    _addressController = TextEditingController(text: widget.customer?.address ?? '');
   }
 
   @override
@@ -39,102 +36,64 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
 
   void _saveCustomer() {
     if (_formKey.currentState!.validate()) {
-      final customerNotifier = ref.read(customerProvider.notifier);
-      final noHp = _phoneController.text.isNotEmpty ? _phoneController.text : null;
-      final alamat = _addressController.text.isNotEmpty ? _addressController.text : null;
+      final name = _nameController.text;
+      final phone = _phoneController.text.isNotEmpty ? _phoneController.text : null;
+      final address = _addressController.text.isNotEmpty ? _addressController.text : null;
 
-      if (_isEditMode) {
-        final updatedCustomer = Customer(
-          id: widget.customer!.id,
-          namaPelanggan: _nameController.text,
-          noHp: noHp,
-          alamat: alamat,
-          totalUtang: widget.customer!.totalUtang, // Utang tidak diubah di form ini
-        );
-        customerNotifier.updateCustomer(updatedCustomer);
+      if (widget.customer == null) {
+        ref.read(customerProvider.notifier).addCustomer(name, phone, address);
       } else {
-        customerNotifier.addCustomer(
-          namaPelanggan: _nameController.text,
-          noHp: noHp,
-          alamat: alamat,
-        );
+        ref.read(customerProvider.notifier).editCustomer(widget.customer!.id, name, phone, address);
       }
-      Navigator.pop(context);
+      Navigator.of(context).pop();
     }
-  }
-
-  void _deleteCustomer() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Hapus Pelanggan'),
-        content: Text('Anda yakin ingin menghapus ${widget.customer!.namaPelanggan}? Aksi ini tidak bisa dibatalkan.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () {
-              ref.read(customerProvider.notifier).deleteCustomer(widget.customer!.id);
-              Navigator.pop(context); // Tutup dialog
-              Navigator.pop(context); // Kembali ke daftar pelanggan
-            },
-            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditMode ? 'Edit Pelanggan' : 'Tambah Pelanggan'),
-        actions: [
-          if (_isEditMode)
-            IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: _deleteCustomer,
-              tooltip: 'Hapus Pelanggan',
-            ),
-        ],
+        title: Text(widget.customer == null ? 'Tambah Pelanggan' : 'Edit Pelanggan'),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Nama Pelanggan'),
-                validator: (value) => value!.isEmpty ? 'Nama tidak boleh kosong' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _phoneController,
-                decoration: const InputDecoration(labelText: 'No. HP (Opsional)'),
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _addressController,
-                decoration: const InputDecoration(labelText: 'Alamat (Opsional)'),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton.icon(
-                onPressed: _saveCustomer,
-                icon: const Icon(Icons.save),
-                label: const Text('Simpan'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(labelText: 'Nama Pelanggan'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Nama tidak boleh kosong';
+                    }
+                    return null;
+                  },
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _phoneController,
+                  decoration: const InputDecoration(labelText: 'No. HP (Opsional)'),
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _addressController,
+                  decoration: const InputDecoration(labelText: 'Alamat (Opsional)'),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _saveCustomer,
+                   style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: const Text('Simpan'),
+                ),
+              ],
+            ),
           ),
         ),
       ),

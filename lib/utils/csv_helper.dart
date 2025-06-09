@@ -1,119 +1,87 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:pos_mutama/models/item.dart';
+import 'package:pos_mutama/models/transaction.dart';
 import 'package:pos_mutama/providers/item_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-class CsvHelper {
-  // Fungsi untuk mengekspor data barang ke file CSV
-  static Future<void> exportItemsToCsv(BuildContext context, List<Item> items) async {
-    // FIXED: use_build_context_synchronously
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    if (items.isEmpty) {
-      scaffoldMessenger.showSnackBar(
-        const SnackBar(content: Text('Tidak ada data untuk diekspor.')),
-      );
-      return;
-    }
-
-    List<List<dynamic>> rows = [];
-    // Header
-    rows.add([
-      'id', 'namaBarang', 'barcode', 'hargaBeli', 'hargaJual', 'stok', 'unit', 'tanggalDitambahkan'
-    ]);
-
-    // Data
-    for (var item in items) {
-      rows.add([
-        item.id,
-        item.namaBarang,
-        item.barcode ?? '',
-        item.hargaBeli,
-        item.hargaJual,
-        item.stok,
-        item.unit,
-        item.tanggalDitambahkan.toIso8601String(),
-      ]);
-    }
-
-    String csv = const ListToCsvConverter().convert(rows);
-
-    // Menyimpan file dan membagikannya
-    try {
-      final directory = await getApplicationDocumentsDirectory();
-      final path = "${directory.path}/export_barang_${DateTime.now().millisecondsSinceEpoch}.csv";
-      final file = File(path);
-      await file.writeAsString(csv);
-      
-      await Share.shareXFiles([XFile(path)], text: 'Berikut adalah data barang.');
-
-    } catch (e) {
-      scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text('Gagal mengekspor file: $e')),
-      );
-    }
+Future<void> exportItemsToCsv(List<Item> items) async {
+  List<List<dynamic>> rows = [];
+  rows.add(['ID', 'Nama', 'Harga Beli', 'Harga Jual', 'Stok', 'Barcode']);
+  for (var item in items) {
+    rows.add([item.id, item.name, item.purchasePrice, item.price, item.stock, item.barcode ?? '']);
   }
 
-  // Fungsi untuk mengimpor data barang dari file CSV
-  static Future<void> importItemsFromCsv(BuildContext context, WidgetRef ref) async {
-    // FIXED: use_build_context_synchronously
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
+  String csv = const ListToCsvConverter().convert(rows);
+  await _saveAndShareFile(csv, 'items_export.csv');
+}
+
+Future<void> exportTransactionsToCsv(List<Transaction> transactions) async {
+   List<List<dynamic>> rows = [];
+  rows.add(['ID', 'Tanggal', 'Pelanggan', 'Total', 'Status', 'Metode Bayar', 'Item']);
+   for (var tx in transactions) {
+     final itemsString = tx.items.map((e) => '${e.name} (x${e.quantity})').join(', ');
+    rows.add([tx.id, tx.date.toIso8601String(), tx.customer?.name ?? 'Umum', tx.totalAmount, tx.status, tx.paymentMethod, itemsString]);
+  }
+
+  String csv = const ListToCsvConverter().convert(rows);
+  await _saveAndShareFile(csv, 'transactions_export.csv');
+}
+
+Future<String> importItemsFromCsv(WidgetRef ref) async {
+  FilePickerResult? result = await FilePicker.platform.pickFiles(
+    type: FileType.custom,
+    allowedExtensions: ['csv'],
+  );
+
+  if (result != null) {
     try {
-      // Minta izin penyimpanan jika belum diberikan
-      if (Platform.isAndroid || Platform.isIOS) {
-          var status = await Permission.storage.status;
-          if (!status.isGranted) {
-              await Permission.storage.request();
-          }
-      }
+      final file = File(result.files.single.path!);
+      final stringContent = await file.readAsString();
+      final List<List<dynamic>> fields = const CsvToListConverter().convert(stringContent);
       
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['csv'],
-      );
+      // Skip header row
+      for (var i = 1; i < fields.length; i++) {
+        var row = fields[i];
+        if(row.length >= 5) {
+            final name = row[1].toString();
+            final purchasePrice = double.tryParse(row[2].toString()) ?? 0.0;
+            final price = int.tryParse(row[3].toString()) ?? 0;
+            final stock = int.tryParse(row[4].toString()) ?? 0;
+            final barcode = row.length > 5 && row[5].toString().isNotEmpty ? row[5].toString() : null;
 
-      if (result != null) {
-        final path = result.files.single.path!;
-        final input = File(path).openRead();
-        final fields = await input
-            .transform(utf8.decoder)
-            .transform(const CsvToListConverter(shouldParseNumbers: false)) // Baca semua sebagai string dulu
-            .toList();
-
-        // Lewati header (baris pertama)
-        final itemsToImport = fields.sublist(1);
-        final itemNotifier = ref.read(itemProvider.notifier);
-
-        for (var row in itemsToImport) {
-          // Validasi sederhana jumlah kolom
-          if (row.length < 7) continue; 
-          
-          itemNotifier.addItem(
-            namaBarang: row[1],
-            barcode: row[2].toString().isNotEmpty ? row[2] : null,
-            hargaBeli: int.tryParse(row[3].toString()) ?? 0,
-            hargaJual: int.tryParse(row[4].toString()) ?? 0,
-            stok: int.tryParse(row[5].toString()) ?? 0,
-            unit: row[6].toString(),
-          );
+            await ref.read(itemProvider.notifier).addItem(name, price, stock, barcode, purchasePrice);
         }
-        
-        scaffoldMessenger.showSnackBar(
-          SnackBar(content: Text('${itemsToImport.length} barang berhasil diimpor.')),
-        );
-      } else {
-        // User membatalkan picker
       }
+      return 'Import berhasil!';
     } catch (e) {
-      scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text('Error saat impor: $e')),
-      );
+      return 'Error saat memproses file: $e';
     }
+  } else {
+    return 'Tidak ada file yang dipilih.';
+  }
+}
+
+Future<void> _saveAndShareFile(String data, String fileName) async {
+  var status = await Permission.storage.status;
+  if (!status.isGranted) {
+    status = await Permission.storage.request();
+  }
+
+  if (status.isGranted) {
+    final directory = await getApplicationDocumentsDirectory();
+    final path = '${directory.path}/$fileName';
+    final file = File(path);
+    await file.writeAsString(data);
+    
+    final xfile = XFile(path);
+    await Share.shareXFiles([xfile]);
+  } else {
+    // Handle kasus di mana izin tidak diberikan.
+    // Tidak melakukan apa-apa agar tidak ada 'print' di production.
   }
 }

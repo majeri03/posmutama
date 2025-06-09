@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import 'package:pos_mutama/models/customer.dart';
 import 'package:pos_mutama/models/transaction_item.dart';
 
 part 'transaction.g.dart';
@@ -9,50 +10,38 @@ class Transaction extends HiveObject {
   String id;
 
   @HiveField(1)
-  DateTime tanggalTransaksi;
+  DateTime date;
 
   @HiveField(2)
   List<TransactionItem> items;
 
   @HiveField(3)
-  int totalBelanja;
+  int totalAmount;
 
   @HiveField(4)
-  int totalBayar;
+  Customer? customer;
 
   @HiveField(5)
-  int kembalian;
+  String status; // e.g., 'Lunas', 'Belum Lunas'
 
   @HiveField(6)
-  String metodePembayaran; // 'Cash', 'Transfer'
+  int paidAmount;
 
   @HiveField(7)
-  String statusPembayaran; // 'Lunas', 'Belum Lunas', 'DP'
+  int changeAmount;
 
   @HiveField(8)
-  String? idPelanggan;
-
-  @HiveField(9)
-  String namaKasir;
+  String paymentMethod;
 
   Transaction({
     required this.id,
-    required this.tanggalTransaksi,
+    required this.date,
     required this.items,
-    required this.totalBelanja,
-    required this.totalBayar,
-    required this.kembalian,
-    required this.metodePembayaran,
-    required this.statusPembayaran,
-    this.idPelanggan,
-    required this.namaKasir,
+    required this.totalAmount,
+    this.customer,
+    required this.status,
+    required this.paidAmount,
+    required this.changeAmount,
+    required this.paymentMethod,
   });
-  
-  // Getter untuk menghitung total keuntungan dari transaksi ini
-  int get totalKeuntungan {
-    return items.fold(0, (previousValue, element) {
-      final keuntunganPerItem = (element.hargaJualSaatTransaksi - element.hargaBeliSaatTransaksi) * element.jumlahBeli;
-      return previousValue + keuntunganPerItem;
-    });
-  }
 }

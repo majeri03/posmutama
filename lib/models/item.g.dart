@@ -8,7 +8,7 @@ part of 'item.dart';
 
 class ItemAdapter extends TypeAdapter<Item> {
   @override
-  final int typeId = 0;
+  final int typeId = 1;
 
   @override
   Item read(BinaryReader reader) {
@@ -18,36 +18,30 @@ class ItemAdapter extends TypeAdapter<Item> {
     };
     return Item(
       id: fields[0] as String,
-      namaBarang: fields[1] as String,
-      barcode: fields[2] as String?,
-      hargaBeli: fields[3] as int,
-      hargaJual: fields[4] as int,
-      stok: fields[5] as int,
-      unit: fields[6] as String,
-      tanggalDitambahkan: fields[7] as DateTime,
+      name: fields[1] as String,
+      price: fields[2] as int,
+      stock: fields[3] as int,
+      barcode: fields[4] as String?,
+      purchasePrice: fields[5] as double,
     );
   }
 
   @override
   void write(BinaryWriter writer, Item obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.namaBarang)
+      ..write(obj.name)
       ..writeByte(2)
-      ..write(obj.barcode)
+      ..write(obj.price)
       ..writeByte(3)
-      ..write(obj.hargaBeli)
+      ..write(obj.stock)
       ..writeByte(4)
-      ..write(obj.hargaJual)
+      ..write(obj.barcode)
       ..writeByte(5)
-      ..write(obj.stok)
-      ..writeByte(6)
-      ..write(obj.unit)
-      ..writeByte(7)
-      ..write(obj.tanggalDitambahkan);
+      ..write(obj.purchasePrice);
   }
 
   @override

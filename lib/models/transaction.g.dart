@@ -18,42 +18,39 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
     };
     return Transaction(
       id: fields[0] as String,
-      tanggalTransaksi: fields[1] as DateTime,
+      date: fields[1] as DateTime,
       items: (fields[2] as List).cast<TransactionItem>(),
-      totalBelanja: fields[3] as int,
-      totalBayar: fields[4] as int,
-      kembalian: fields[5] as int,
-      metodePembayaran: fields[6] as String,
-      statusPembayaran: fields[7] as String,
-      idPelanggan: fields[8] as String?,
-      namaKasir: fields[9] as String,
+      totalAmount: fields[3] as int,
+      customer: fields[4] as Customer?,
+      status: fields[5] as String,
+      paidAmount: fields[6] as int,
+      changeAmount: fields[7] as int,
+      paymentMethod: fields[8] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, Transaction obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.tanggalTransaksi)
+      ..write(obj.date)
       ..writeByte(2)
       ..write(obj.items)
       ..writeByte(3)
-      ..write(obj.totalBelanja)
+      ..write(obj.totalAmount)
       ..writeByte(4)
-      ..write(obj.totalBayar)
+      ..write(obj.customer)
       ..writeByte(5)
-      ..write(obj.kembalian)
+      ..write(obj.status)
       ..writeByte(6)
-      ..write(obj.metodePembayaran)
+      ..write(obj.paidAmount)
       ..writeByte(7)
-      ..write(obj.statusPembayaran)
+      ..write(obj.changeAmount)
       ..writeByte(8)
-      ..write(obj.idPelanggan)
-      ..writeByte(9)
-      ..write(obj.namaKasir);
+      ..write(obj.paymentMethod);
   }
 
   @override
