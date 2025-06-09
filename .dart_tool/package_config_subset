@@ -126,10 +126,6 @@ fixnum
 3.1
 file:///home/codespace/.pub-cache/hosted/pub.dev/fixnum-1.1.1/
 file:///home/codespace/.pub-cache/hosted/pub.dev/fixnum-1.1.1/lib/
-flutter_barcode_scanner
-2.12
-file:///home/codespace/.pub-cache/hosted/pub.dev/flutter_barcode_scanner-2.0.0/
-file:///home/codespace/.pub-cache/hosted/pub.dev/flutter_barcode_scanner-2.0.0/lib/
 flutter_lints
 2.19
 file:///home/codespace/.pub-cache/hosted/pub.dev/flutter_lints-2.0.3/
@@ -238,6 +234,10 @@ mime
 3.2
 file:///home/codespace/.pub-cache/hosted/pub.dev/mime-1.0.6/
 file:///home/codespace/.pub-cache/hosted/pub.dev/mime-1.0.6/lib/
+mobile_scanner
+3.4
+file:///home/codespace/.pub-cache/hosted/pub.dev/mobile_scanner-5.2.3/
+file:///home/codespace/.pub-cache/hosted/pub.dev/mobile_scanner-5.2.3/lib/
 package_config
 3.4
 file:///home/codespace/.pub-cache/hosted/pub.dev/package_config-2.2.0/

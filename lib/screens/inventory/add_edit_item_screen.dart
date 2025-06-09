@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_barcode_scanner/flutter_barcode_scanner.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pos_mutama/models/item.dart';
 import 'package:pos_mutama/providers/item_provider.dart';
+import 'package:pos_mutama/screens/pos/scanner_screen.dart'; // Impor halaman scanner baru
 
 class AddEditItemScreen extends ConsumerStatefulWidget {
-  final Item? item; // Null jika mode 'Tambah', berisi data jika mode 'Edit'
+  final Item? item;
 
   const AddEditItemScreen({super.key, this.item});
 
@@ -17,7 +17,6 @@ class AddEditItemScreen extends ConsumerStatefulWidget {
 class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers untuk setiap field input
   late TextEditingController _nameController;
   late TextEditingController _barcodeController;
   late TextEditingController _purchasePriceController;
@@ -30,7 +29,6 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   @override
   void initState() {
     super.initState();
-    // Inisialisasi controller dengan data yang ada jika dalam mode edit
     _nameController = TextEditingController(text: widget.item?.namaBarang ?? '');
     _barcodeController = TextEditingController(text: widget.item?.barcode ?? '');
     _purchasePriceController =
@@ -44,7 +42,6 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
 
   @override
   void dispose() {
-    // Jangan lupa membuang controller saat widget tidak lagi digunakan
     _nameController.dispose();
     _barcodeController.dispose();
     _purchasePriceController.dispose();
@@ -54,39 +51,27 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     super.dispose();
   }
 
-  // Fungsi untuk scan barcode
+  // Fungsi untuk scan barcode (DIGANTI)
   Future<void> _scanBarcode() async {
-    try {
-      final barcode = await FlutterBarcodeScanner.scanBarcode(
-        '#ff6666', // Warna garis scanner
-        'Batal',   // Teks tombol batal
-        true,      // Tampilkan ikon flash
-        ScanMode.BARCODE,
-      );
+    // Buka halaman scanner dan tunggu hasilnya
+    final barcodeResult = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (context) => const ScannerScreen()),
+    );
 
-      if (!mounted) return;
-
-      // Jika barcode tidak '-1' (artinya scan tidak dibatalkan)
-      if (barcode != '-1') {
-        setState(() {
-          _barcodeController.text = barcode;
-        });
-      }
-    } on PlatformException {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal mendapatkan izin kamera.')),
-      );
+    // Jika ada hasil (tidak null) dan widget masih ada, masukkan ke controller
+    if (barcodeResult != null && mounted) {
+      setState(() {
+        _barcodeController.text = barcodeResult;
+      });
     }
   }
 
-  // Fungsi untuk menyimpan data
   void _saveItem() {
-    // Validasi form
     if (_formKey.currentState!.validate()) {
       final itemNotifier = ref.read(itemProvider.notifier);
 
       if (_isEditMode) {
-        // Mode Edit: Perbarui item yang ada
         final updatedItem = Item(
           id: widget.item!.id,
           namaBarang: _nameController.text,
@@ -95,11 +80,10 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
           hargaJual: int.parse(_sellingPriceController.text),
           stok: int.parse(_stockController.text),
           unit: _unitController.text,
-          tanggalDitambahkan: widget.item!.tanggalDitambahkan, // Tetap gunakan tanggal lama
+          tanggalDitambahkan: widget.item!.tanggalDitambahkan,
         );
         itemNotifier.updateItem(updatedItem);
       } else {
-        // Mode Tambah: Buat item baru
         itemNotifier.addItem(
           namaBarang: _nameController.text,
           barcode: _barcodeController.text.isNotEmpty ? _barcodeController.text : null,
@@ -109,12 +93,11 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
           unit: _unitController.text,
         );
       }
-      Navigator.pop(context); // Kembali ke layar sebelumnya setelah menyimpan
+      Navigator.pop(context);
     }
   }
   
   void _deleteItem() {
-    // Tampilkan dialog konfirmasi sebelum menghapus
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -128,8 +111,8 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
           TextButton(
             onPressed: () {
               ref.read(itemProvider.notifier).deleteItem(widget.item!.id);
-              Navigator.pop(context); // Tutup dialog
-              Navigator.pop(context); // Kembali ke layar inventaris
+              Navigator.pop(context);
+              Navigator.pop(context);
             },
             child: const Text('Hapus', style: TextStyle(color: Colors.red)),
           ),

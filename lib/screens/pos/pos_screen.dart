@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_barcode_scanner/flutter_barcode_scanner.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:pos_mutama/models/customer.dart';
@@ -8,8 +7,9 @@ import 'package:pos_mutama/providers/cart_provider.dart';
 import 'package:pos_mutama/providers/customer_provider.dart';
 import 'package:pos_mutama/providers/item_provider.dart';
 import 'package:pos_mutama/providers/transaction_provider.dart';
-import 'package:pos_mutama/screens/inventory/inventory_screen.dart'; // Untuk mengakses filteredItemsProvider
+import 'package:pos_mutama/screens/inventory/inventory_screen.dart';
 import 'package:pos_mutama/screens/pos/receipt_screen.dart';
+import 'package:pos_mutama/screens/pos/scanner_screen.dart'; // Impor halaman scanner baru
 
 class PosScreen extends ConsumerWidget {
   const PosScreen({super.key});
@@ -19,19 +19,20 @@ class PosScreen extends ConsumerWidget {
     final cartState = ref.watch(cartProvider);
     final numberFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ');
 
+    // Fungsi untuk scan barcode (DIGANTI)
     Future<void> scanBarcodeAndAddItem() async {
-      // FIXED: use_build_context_synchronously
       final scaffoldMessenger = ScaffoldMessenger.of(context);
-      try {
-        final barcode = await FlutterBarcodeScanner.scanBarcode(
-            '#ff6666', 'Batal', true, ScanMode.BARCODE);
-        
-        if (barcode == '-1') return; // User membatalkan
 
+      final barcode = await Navigator.push<String>(
+        context,
+        MaterialPageRoute(builder: (context) => const ScannerScreen()),
+      );
+      
+      if (barcode != null && context.mounted) {
         final allItems = ref.read(itemProvider);
         final foundItem = allItems.firstWhere(
           (item) => item.barcode == barcode,
-          orElse: () => Item(id: '', namaBarang: '', hargaBeli: 0, hargaJual: 0, stok: -1, unit: '', tanggalDitambahkan: DateTime.now()), // Dummy item
+          orElse: () => Item(id: '', namaBarang: '', hargaBeli: 0, hargaJual: 0, stok: -1, unit: '', tanggalDitambahkan: DateTime.now()),
         );
 
         if (foundItem.stok != -1) {
@@ -41,10 +42,6 @@ class PosScreen extends ConsumerWidget {
              const SnackBar(content: Text('Barang dengan barcode ini tidak ditemukan.')),
            );
         }
-      } catch (e) {
-         scaffoldMessenger.showSnackBar(
-            SnackBar(content: Text('Error: ${e.toString()}')),
-         );
       }
     }
 
@@ -61,7 +58,6 @@ class PosScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          // Bagian Keranjang Belanja
           Expanded(
             flex: 2,
             child: cartState.items.isEmpty
@@ -72,7 +68,6 @@ class PosScreen extends ConsumerWidget {
                       final cartItem = cartState.items[index];
                       return ListTile(
                         title: Text(cartItem.namaBarang),
-                        // FIXED: unnecessary_string_interpolations
                         subtitle: Text(numberFormat.format(cartItem.hargaJualSaatTransaksi)),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -101,11 +96,10 @@ class PosScreen extends ConsumerWidget {
           ),
           const Divider(thickness: 2),
           
-          // Bagian Daftar Produk
           Expanded(
             flex: 3,
             child: Consumer(builder: (context, ref, _) {
-              final items = ref.watch(filteredItemsProvider); // Reuse dari InventoryScreen
+              final items = ref.watch(filteredItemsProvider);
               return Column(
                 children: [
                    Padding(
@@ -129,8 +123,7 @@ class PosScreen extends ConsumerWidget {
                           subtitle: Text('Stok: ${item.stok} | ${numberFormat.format(item.hargaJual)}'),
                           onTap: item.stok > 0
                               ? () => ref.read(cartProvider.notifier).addItemToCart(item)
-                              : null, // Disable tap jika stok habis
-                          // FIXED: deprecated_member_use
+                              : null,
                           tileColor: item.stok <= 0 ? Colors.grey.withAlpha(77) : null,
                         );
                       },
@@ -142,7 +135,6 @@ class PosScreen extends ConsumerWidget {
           ),
         ],
       ),
-      // Tombol bayar di bawah
       bottomNavigationBar: cartState.items.isEmpty
           ? null
           : BottomAppBar(
@@ -168,7 +160,6 @@ class PosScreen extends ConsumerWidget {
     );
   }
 
-  // Fungsi untuk menampilkan dialog pembayaran
   void _showPaymentDialog(BuildContext context, WidgetRef ref, int totalBelanja) {
     showDialog(
       context: context,
@@ -180,7 +171,6 @@ class PosScreen extends ConsumerWidget {
 }
 
 
-// Widget untuk dialog pembayaran
 class PaymentDialog extends ConsumerStatefulWidget {
   final int totalBelanja;
   const PaymentDialog({required this.totalBelanja, super.key});
@@ -200,7 +190,6 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
   @override
   void initState() {
     super.initState();
-    // Jika lunas, otomatis isi jumlah bayar
     _paymentController.text = widget.totalBelanja.toString();
   }
   
@@ -270,7 +259,6 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
         ElevatedButton(
           onPressed: () async {
             if (_formKey.currentState!.validate()) {
-              // FIXED: use_build_context_synchronously
               final navigator = Navigator.of(context);
               final newTransaction = await ref.read(transactionProvider.notifier).addTransaction(
                     items: ref.read(cartProvider).items,
@@ -282,9 +270,9 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
                   );
 
               if (newTransaction != null) {
-                ref.read(cartProvider.notifier).clearCart(); // Kosongkan keranjang
-                navigator.pop(); // Tutup dialog
-                navigator.pushReplacement( // Ganti halaman, jangan bisa kembali ke kasir dengan data lama
+                ref.read(cartProvider.notifier).clearCart();
+                navigator.pop();
+                navigator.pushReplacement(
                   MaterialPageRoute(builder: (context) => ReceiptScreen(transaction: newTransaction)),
                 );
               }
