@@ -1,33 +1,24 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-def localProperties = new Properties()
-def localPropertiesFile = rootProject.file("local.properties")
-if (localPropertiesFile.exists()) {
-    localPropertiesFile.withReader("UTF-8") { reader ->
-        localProperties.load(reader)
+fun localProperties(project: org.gradle.api.Project): java.util.Properties {
+    val properties = java.util.Properties()
+    val localPropertiesFile = project.rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        properties.load(java.io.FileInputStream(localPropertiesFile))
     }
+    return properties
 }
 
-def flutterVersionCode = localProperties.getProperty("flutter.versionCode")
-if (flutterVersionCode == null) {
-    flutterVersionCode = "1"
-}
-
-def flutterVersionName = localProperties.getProperty("flutter.versionName")
-if (flutterVersionName == null) {
-    flutterVersionName = "1.0"
-}
+val flutterVersionCode: String by localProperties(project)
+val flutterVersionName: String by localProperties(project)
 
 android {
     namespace = "com.example.pos_mutama"
     compileSdk = flutter.compileSdkVersion
-
-    // TAMBAHKAN BARIS INI SESUAI SARAN ERROR LOG
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -62,5 +53,4 @@ flutter {
     source = "../.."
 }
 
-dependencies {
-}
+dependencies {}
