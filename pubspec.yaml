@@ -21,17 +21,17 @@ dependencies:
   
   # Utilitas
   uuid: ^4.3.3
-  intl: ^0.18.1 # Untuk format tanggal dan angka
+  intl: ^0.20.2 # Untuk format tanggal dan angka
 
   # Fitur
-  mobile_scanner: ^5.1.1
-  csv: ^5.1.1
-  file_picker: ^6.1.1
+  mobile_scanner: ^7.0.1
+  csv: ^6.0.0
+  file_picker: ^10.1.9
   pdf: ^3.10.7
   printing: ^5.11.1
   
-  share_plus: ^7.2.2              
-  permission_handler: ^11.3.1
+  share_plus: ^11.0.0              
+  permission_handler: ^12.0.0+1
 
   cupertino_icons: ^1.0.2
 
@@ -43,7 +43,7 @@ dev_dependencies:
   hive_generator: ^2.0.1
   build_runner: ^2.4.7
 
-  flutter_lints: ^2.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true

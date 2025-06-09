@@ -153,7 +153,7 @@
     },
     {
       "name": "csv",
-      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/csv-5.1.1",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/csv-6.0.0",
       "packageUri": "lib/",
       "languageVersion": "2.12"
     },
@@ -189,9 +189,9 @@
     },
     {
       "name": "file_picker",
-      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/file_picker-6.2.1",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/file_picker-10.1.9",
       "packageUri": "lib/",
-      "languageVersion": "2.19"
+      "languageVersion": "3.4"
     },
     {
       "name": "fixnum",
@@ -207,9 +207,9 @@
     },
     {
       "name": "flutter_lints",
-      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/flutter_lints-2.0.3",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/flutter_lints-6.0.0",
       "packageUri": "lib/",
-      "languageVersion": "2.19"
+      "languageVersion": "3.8"
     },
     {
       "name": "flutter_plugin_android_lifecycle",
@@ -297,9 +297,9 @@
     },
     {
       "name": "intl",
-      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/intl-0.18.1",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/intl-0.20.2",
       "packageUri": "lib/",
-      "languageVersion": "2.12"
+      "languageVersion": "3.3"
     },
     {
       "name": "io",
@@ -339,9 +339,9 @@
     },
     {
       "name": "lints",
-      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/lints-2.1.1",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/lints-6.0.0",
       "packageUri": "lib/",
-      "languageVersion": "3.0"
+      "languageVersion": "3.8"
     },
     {
       "name": "logging",
@@ -375,15 +375,15 @@
     },
     {
       "name": "mime",
-      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/mime-1.0.6",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/mime-2.0.0",
       "packageUri": "lib/",
       "languageVersion": "3.2"
     },
     {
       "name": "mobile_scanner",
-      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/mobile_scanner-5.2.3",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/mobile_scanner-7.0.1",
       "packageUri": "lib/",
-      "languageVersion": "3.4"
+      "languageVersion": "3.7"
     },
     {
       "name": "package_config",
@@ -453,13 +453,13 @@
     },
     {
       "name": "permission_handler",
-      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/permission_handler-11.4.0",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/permission_handler-12.0.0+1",
       "packageUri": "lib/",
       "languageVersion": "3.5"
     },
     {
       "name": "permission_handler_android",
-      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/permission_handler_android-12.1.0",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/permission_handler_android-13.0.1",
       "packageUri": "lib/",
       "languageVersion": "3.5"
     },
@@ -549,13 +549,13 @@
     },
     {
       "name": "share_plus",
-      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/share_plus-7.2.2",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/share_plus-11.0.0",
       "packageUri": "lib/",
-      "languageVersion": "2.18"
+      "languageVersion": "3.4"
     },
     {
       "name": "share_plus_platform_interface",
-      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/share_plus_platform_interface-3.4.0",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/share_plus_platform_interface-6.0.0",
       "packageUri": "lib/",
       "languageVersion": "2.18"
     },
