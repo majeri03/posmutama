@@ -92,8 +92,8 @@ class CustomersScreen extends ConsumerWidget {
             ),
           );
         },
-        child: const Icon(Icons.person_add),
         tooltip: 'Tambah Pelanggan Baru',
+        child: const Icon(Icons.person_add),
       ),
     );
   }

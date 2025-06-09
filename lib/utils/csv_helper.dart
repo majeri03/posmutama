@@ -13,8 +13,10 @@ import 'package:share_plus/share_plus.dart';
 class CsvHelper {
   // Fungsi untuk mengekspor data barang ke file CSV
   static Future<void> exportItemsToCsv(BuildContext context, List<Item> items) async {
+    // FIXED: use_build_context_synchronously
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     if (items.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessenger.showSnackBar(
         const SnackBar(content: Text('Tidak ada data untuk diekspor.')),
       );
       return;
@@ -52,7 +54,7 @@ class CsvHelper {
       await Share.shareXFiles([XFile(path)], text: 'Berikut adalah data barang.');
 
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessenger.showSnackBar(
         SnackBar(content: Text('Gagal mengekspor file: $e')),
       );
     }
@@ -60,6 +62,8 @@ class CsvHelper {
 
   // Fungsi untuk mengimpor data barang dari file CSV
   static Future<void> importItemsFromCsv(BuildContext context, WidgetRef ref) async {
+    // FIXED: use_build_context_synchronously
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     try {
       // Minta izin penyimpanan jika belum diberikan
       if (Platform.isAndroid || Platform.isIOS) {
@@ -100,14 +104,14 @@ class CsvHelper {
           );
         }
         
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(content: Text('${itemsToImport.length} barang berhasil diimpor.')),
         );
       } else {
         // User membatalkan picker
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessenger.showSnackBar(
         SnackBar(content: Text('Error saat impor: $e')),
       );
     }

@@ -45,8 +45,8 @@ class ReceiptGenerator {
                 ]),
               pw.Divider(),
 
-              // Tabel Item
-              pw.Table.fromTextArray(
+              // Tabel Item (FIXED: deprecated_member_use)
+              pw.TableHelper.fromTextArray(
                 headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
                 cellStyle: const pw.TextStyle(fontSize: 9),
                 headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
@@ -78,7 +78,7 @@ class ReceiptGenerator {
                 mainAxisAlignment: pw.MainAxisAlignment.end,
                 children: [
                   pw.Text('Total Bayar: ', style: const pw.TextStyle(fontSize: 10)),
-                  pw.Text(numberFormat.format(transaction.totalBayar), style: const pw.TextStyle(fontSize: 10)),
+                  pw.Text(numberFormat.format(transaction.totalBayar), style: const pw.TextStyle(fontSize:10)),
                 ]
               ),
               if(transaction.kembalian > 0)
@@ -97,7 +97,8 @@ class ReceiptGenerator {
                 child: pw.Text('Terima Kasih!', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
               ),
                pw.Center(
-                child: pw.Text('Barang yang sudah dibeli tidak dapat dikembalikan.', style: const pw.TextStyle(fontStyle: pw.FontStyle.italic, fontSize: 8)),
+                 // FIXED: const_eval_type_bool_num_string
+                child: pw.Text('Barang yang sudah dibeli tidak dapat dikembalikan.', style: pw.TextStyle(fontStyle: pw.FontStyle.italic, fontSize: 8)),
               ),
             ],
           );

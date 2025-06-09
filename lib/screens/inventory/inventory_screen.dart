@@ -116,8 +116,8 @@ class InventoryScreen extends ConsumerWidget {
             ),
           );
         },
-        child: const Icon(Icons.add),
         tooltip: 'Tambah Barang Baru',
+        child: const Icon(Icons.add),
       ),
     );
   }

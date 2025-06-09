@@ -20,27 +20,30 @@ class PosScreen extends ConsumerWidget {
     final numberFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ');
 
     Future<void> scanBarcodeAndAddItem() async {
+      // FIXED: use_build_context_synchronously
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
       try {
         final barcode = await FlutterBarcodeScanner.scanBarcode(
             '#ff6666', 'Batal', true, ScanMode.BARCODE);
-        if (barcode != '-1') {
-          final allItems = ref.read(itemProvider);
-          final foundItem = allItems.firstWhere(
-            (item) => item.barcode == barcode,
-            orElse: () => Item(id: '', namaBarang: '', hargaBeli: 0, hargaJual: 0, stok: -1, unit: '', tanggalDitambahkan: DateTime.now()), // Dummy item
-          );
+        
+        if (barcode == '-1') return; // User membatalkan
 
-          if (foundItem.stok != -1) {
-            ref.read(cartProvider.notifier).addItemToCart(foundItem);
-          } else {
-             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Barang dengan barcode ini tidak ditemukan.')),
-            );
-          }
+        final allItems = ref.read(itemProvider);
+        final foundItem = allItems.firstWhere(
+          (item) => item.barcode == barcode,
+          orElse: () => Item(id: '', namaBarang: '', hargaBeli: 0, hargaJual: 0, stok: -1, unit: '', tanggalDitambahkan: DateTime.now()), // Dummy item
+        );
+
+        if (foundItem.stok != -1) {
+          ref.read(cartProvider.notifier).addItemToCart(foundItem);
+        } else {
+            scaffoldMessenger.showSnackBar(
+             const SnackBar(content: Text('Barang dengan barcode ini tidak ditemukan.')),
+           );
         }
       } catch (e) {
-         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e')),
+         scaffoldMessenger.showSnackBar(
+            SnackBar(content: Text('Error: ${e.toString()}')),
          );
       }
     }
@@ -69,7 +72,8 @@ class PosScreen extends ConsumerWidget {
                       final cartItem = cartState.items[index];
                       return ListTile(
                         title: Text(cartItem.namaBarang),
-                        subtitle: Text('${numberFormat.format(cartItem.hargaJualSaatTransaksi)}'),
+                        // FIXED: unnecessary_string_interpolations
+                        subtitle: Text(numberFormat.format(cartItem.hargaJualSaatTransaksi)),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -126,7 +130,8 @@ class PosScreen extends ConsumerWidget {
                           onTap: item.stok > 0
                               ? () => ref.read(cartProvider.notifier).addItemToCart(item)
                               : null, // Disable tap jika stok habis
-                          tileColor: item.stok <= 0 ? Colors.grey.withOpacity(0.3) : null,
+                          // FIXED: deprecated_member_use
+                          tileColor: item.stok <= 0 ? Colors.grey.withAlpha(77) : null,
                         );
                       },
                     ),
@@ -148,13 +153,13 @@ class PosScreen extends ConsumerWidget {
                   children: [
                     Text('Total: ${numberFormat.format(cartState.total)}', style: Theme.of(context).textTheme.headlineSmall),
                     ElevatedButton.icon(
-                      icon: const Icon(Icons.payment),
-                      label: const Text('Bayar'),
                       onPressed: () => _showPaymentDialog(context, ref, cartState.total),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                         textStyle: const TextStyle(fontSize: 18),
                       ),
+                      icon: const Icon(Icons.payment),
+                      label: const Text('Bayar'),
                     )
                   ],
                 ),
@@ -265,6 +270,8 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
         ElevatedButton(
           onPressed: () async {
             if (_formKey.currentState!.validate()) {
+              // FIXED: use_build_context_synchronously
+              final navigator = Navigator.of(context);
               final newTransaction = await ref.read(transactionProvider.notifier).addTransaction(
                     items: ref.read(cartProvider).items,
                     totalBelanja: widget.totalBelanja,
@@ -276,9 +283,8 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
 
               if (newTransaction != null) {
                 ref.read(cartProvider.notifier).clearCart(); // Kosongkan keranjang
-                Navigator.pop(context); // Tutup dialog
-                Navigator.pushReplacement( // Ganti halaman, jangan bisa kembali ke kasir dengan data lama
-                  context,
+                navigator.pop(); // Tutup dialog
+                navigator.pushReplacement( // Ganti halaman, jangan bisa kembali ke kasir dengan data lama
                   MaterialPageRoute(builder: (context) => ReceiptScreen(transaction: newTransaction)),
                 );
               }
