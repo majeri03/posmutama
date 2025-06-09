@@ -7,17 +7,16 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-fun localProperties(project: org.gradle.api.Project): Properties {
-    val properties = Properties()
+// Membaca properti dari file local.properties dan memberikan nilai default jika tidak ada.
+val localProperties = Properties().apply {
     val localPropertiesFile = project.rootProject.file("local.properties")
     if (localPropertiesFile.exists()) {
-        properties.load(FileInputStream(localPropertiesFile))
+        load(FileInputStream(localPropertiesFile))
     }
-    return properties
 }
 
-val flutterVersionCode: String by localProperties(project)
-val flutterVersionName: String by localProperties(project)
+val flutterVersionCode = localProperties.getProperty("flutter.versionCode") ?: "1"
+val flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "1.0"
 
 android {
     namespace = "com.example.pos_mutama"
