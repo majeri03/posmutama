@@ -7,6 +7,7 @@ import 'package:pos_mutama/providers/store_info_provider.dart';
 import 'package:pos_mutama/providers/transaction_provider.dart';
 import 'package:pos_mutama/utils/receipt_generator.dart';
 import 'package:printing/printing.dart';
+import 'package:pos_mutama/screens/reports/edit_transaction_screen.dart';
 
 class TransactionDetailScreen extends ConsumerWidget {
   final Transaction transaction;

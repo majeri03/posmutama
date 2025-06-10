@@ -182,7 +182,7 @@ class _POSScreenState extends ConsumerState<POSScreen> {
             itemCount: _searchedItems.length,
             itemBuilder: (context, index) {
               final item = _searchedItems[index];
-
+              final TransactionItem? cartItem = cart.firstWhere((ci) => ci.id == item.id, orElse: () => null);
               // 2. Cari item ini di dalam keranjang
               final cartItem = cart.firstWhere((ci) => ci.id == item.id, orElse: () => null);
               

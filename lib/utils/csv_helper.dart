@@ -66,7 +66,6 @@ Future<String> importItemsFromCsv(WidgetRef ref) async {
               price: int.tryParse(row[3].toString()) ?? 0,
               stock: int.tryParse(row[4].toString()) ?? 0,
               barcode: row.length > 5 && row[5].toString().isNotEmpty ? row[5].toString() : null,
-              purchasePrice: 0.0, // Anda mungkin perlu menyesuaikan ini
             );
             await itemNotifier.addImportedItem(newItem);
             itemsAdded++;

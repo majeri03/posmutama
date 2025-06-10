@@ -97,9 +97,13 @@ class TransactionNotifier extends StateNotifier<List<Transaction>> {
     final allItemIds = {...oldTransaction.items.map((e) => e.id), ...newTransaction.items.map((e) => e.id)};
 
     for (final itemId in allItemIds) {
-      final oldQty = oldTransaction.items.firstWhere((e) => e.id == itemId, orElse: () => null)?.quantity ?? 0;
-      final newQty = newTransaction.items.firstWhere((e) => e.id == itemId, orElse: () => null)?.quantity ?? 0;
-      final stockChange = oldQty - newQty; // Jika > 0, stok dikembalikan. Jika < 0, stok dikurangi.
+      final oldItem = oldTransaction.items.where((e) => e.id == itemId);
+      final newItem = newTransaction.items.where((e) => e.id == itemId);
+
+      final oldQty = oldItem.isEmpty ? 0 : oldItem.first.quantity;
+      final newQty = newItem.isEmpty ? 0 : newItem.first.quantity;
+      
+      final stockChange = oldQty - newQty; 
 
       if (stockChange != 0) {
         _ref.read(itemProvider.notifier).adjustStock(itemId, stockChange);
