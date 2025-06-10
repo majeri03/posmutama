@@ -14,4 +14,14 @@ class StoreInfo extends HiveObject {
     required this.name,
     required this.address,
   });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'address': address,
+      };
+
+  factory StoreInfo.fromJson(Map<String, dynamic> json) => StoreInfo(
+        name: json['name'],
+        address: json['address'],
+      );
 }

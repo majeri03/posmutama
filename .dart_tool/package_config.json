@@ -170,6 +170,18 @@
       "languageVersion": "3.0"
     },
     {
+      "name": "dio",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/dio-5.8.0+1",
+      "packageUri": "lib/",
+      "languageVersion": "2.18"
+    },
+    {
+      "name": "dio_web_adapter",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/dio_web_adapter-2.1.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.3"
+    },
+    {
       "name": "equatable",
       "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/equatable-2.0.7",
       "packageUri": "lib/",
@@ -198,6 +210,12 @@
       "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/file_picker-10.1.9",
       "packageUri": "lib/",
       "languageVersion": "3.4"
+    },
+    {
+      "name": "file_saver",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/file_saver-0.2.14",
+      "packageUri": "lib/",
+      "languageVersion": "2.17"
     },
     {
       "name": "fixnum",

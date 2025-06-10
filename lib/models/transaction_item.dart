@@ -26,4 +26,21 @@ class TransactionItem extends HiveObject {
     required this.quantity,
     required this.purchasePrice,
   });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'price': price,
+        'quantity': quantity,
+        'purchasePrice': purchasePrice,
+      };
+
+  factory TransactionItem.fromJson(Map<String, dynamic> json) =>
+      TransactionItem(
+        id: json['id'],
+        name: json['name'],
+        price: json['price'],
+        quantity: json['quantity'],
+        purchasePrice: json['purchasePrice'],
+      );
 }

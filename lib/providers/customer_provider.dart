@@ -18,7 +18,7 @@ class CustomerNotifier extends StateNotifier<List<Customer>> {
     state = _box.values.toList();
   }
 
-  Future<void> addCustomer(String name, String? phone, String? address) async {
+  Future<Customer> addCustomer(String name, String? phone, String? address) async {
     final newCustomer = Customer(
       id: _uuid.v4(),
       name: name,
@@ -27,9 +27,10 @@ class CustomerNotifier extends StateNotifier<List<Customer>> {
     );
     await _box.put(newCustomer.id, newCustomer);
     state = _box.values.toList();
+    return newCustomer;
   }
 
-  Future<void> editCustomer(String id, String name, String? phone, String? address) async {
+  Future<Customer?> editCustomer(String id, String name, String? phone, String? address) async {
     final customer = _box.get(id);
     if (customer != null) {
       customer.name = name;
@@ -37,7 +38,9 @@ class CustomerNotifier extends StateNotifier<List<Customer>> {
       customer.address = address;
       await customer.save();
       state = _box.values.toList();
+      return customer;
     }
+    return null;
   }
 
   Future<void> deleteCustomer(String id) async {

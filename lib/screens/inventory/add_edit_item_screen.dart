@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pos_mutama/models/item.dart';
 import 'package:pos_mutama/providers/item_provider.dart';
+import 'package:pos_mutama/screens/pos/scanner_screen.dart';
 
 class AddEditItemScreen extends ConsumerStatefulWidget {
   final Item? item;
@@ -137,7 +138,22 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _barcodeController,
-                  decoration: const InputDecoration(labelText: 'Barcode (Opsional)'),
+                  decoration: InputDecoration(
+                    labelText: 'Barcode (Opsional)',
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.qr_code_scanner),
+                      onPressed: () async {
+                        final String? code = await Navigator.of(context).push<String>(
+                          MaterialPageRoute(builder: (context) => const ScannerScreen()),
+                        );
+                        if (code != null && code.isNotEmpty) {
+                          setState(() {
+                            _barcodeController.text = code;
+                          });
+                        }
+                      },
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(

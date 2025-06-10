@@ -1,15 +1,15 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:convert';
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:pos_mutama/models/item.dart';
 import 'package:pos_mutama/models/transaction.dart';
 import 'package:pos_mutama/providers/item_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
-Future<void> exportItemsToCsv(List<Item> items) async {
+Future<String> exportItemsToCsv(List<Item> items) async {
   List<List<dynamic>> rows = [];
   rows.add(['ID', 'Nama', 'Harga Beli', 'Harga Jual', 'Stok', 'Barcode']);
   for (var item in items) {
@@ -17,10 +17,10 @@ Future<void> exportItemsToCsv(List<Item> items) async {
   }
 
   String csv = const ListToCsvConverter().convert(rows);
-  await _saveAndShareFile(csv, 'items_export.csv');
+  return await _saveFileToDownloads(csv, 'items_export.csv');
 }
 
-Future<void> exportTransactionsToCsv(List<Transaction> transactions) async {
+Future<String> exportTransactionsToCsv(List<Transaction> transactions) async {
    List<List<dynamic>> rows = [];
   rows.add(['ID', 'Tanggal', 'Pelanggan', 'Total', 'Status', 'Metode Bayar', 'Item']);
    for (var tx in transactions) {
@@ -29,7 +29,7 @@ Future<void> exportTransactionsToCsv(List<Transaction> transactions) async {
   }
 
   String csv = const ListToCsvConverter().convert(rows);
-  await _saveAndShareFile(csv, 'transactions_export.csv');
+  return await _saveFileToDownloads(csv, 'transactions_export.csv');
 }
 
 Future<String> importItemsFromCsv(WidgetRef ref) async {
@@ -66,22 +66,29 @@ Future<String> importItemsFromCsv(WidgetRef ref) async {
   }
 }
 
-Future<void> _saveAndShareFile(String data, String fileName) async {
-  var status = await Permission.storage.status;
-  if (!status.isGranted) {
-    status = await Permission.storage.request();
-  }
+Future<String> _saveFileToDownloads(String data, String fileName) async {
+  try {
+    // Ubah String menjadi Uint8List (format data biner)
+    Uint8List bytes = utf8.encode(data);
 
-  if (status.isGranted) {
-    final directory = await getApplicationDocumentsDirectory();
-    final path = '${directory.path}/$fileName';
-    final file = File(path);
-    await file.writeAsString(data);
-    
-    final xfile = XFile(path);
-    await Share.shareXFiles([xfile]);
-  } else {
-    // Handle kasus di mana izin tidak diberikan.
-    // Tidak melakukan apa-apa agar tidak ada 'print' di production.
+    // Dapatkan nama file tanpa ekstensi dan ekstensinya secara terpisah
+    String name = fileName.split('.').first;
+    String ext = fileName.split('.').last;
+
+    // Simpan file menggunakan file_saver
+    String? path = await FileSaver.instance.saveFile(
+      name: name,
+      bytes: bytes,
+      ext: ext,
+      mimeType: ext == 'csv' ? MimeType.csv : MimeType.text,
+    );
+
+    if (path != null) {
+      return 'File berhasil disimpan di folder Downloads.';
+    } else {
+      return 'Gagal menyimpan file.';
+    }
+  } catch (e) {
+    return 'Error saat menyimpan file: $e';
   }
 }

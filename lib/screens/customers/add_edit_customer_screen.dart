@@ -34,18 +34,23 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     super.dispose();
   }
 
-  void _saveCustomer() {
+  void _saveCustomer() async {
     if (_formKey.currentState!.validate()) {
       final name = _nameController.text;
       final phone = _phoneController.text.isNotEmpty ? _phoneController.text : null;
       final address = _addressController.text.isNotEmpty ? _addressController.text : null;
 
       if (widget.customer == null) {
-        ref.read(customerProvider.notifier).addCustomer(name, phone, address);
+        // Panggil provider dan tunggu objek customer yang baru
+        final newCustomer = await ref.read(customerProvider.notifier).addCustomer(name, phone, address);
+        // Kirim kembali customer baru ke halaman sebelumnya
+        if (mounted) Navigator.of(context).pop(newCustomer);
       } else {
-        ref.read(customerProvider.notifier).editCustomer(widget.customer!.id, name, phone, address);
+        // Panggil provider dan tunggu objek customer yang diedit
+        final editedCustomer = await ref.read(customerProvider.notifier).editCustomer(widget.customer!.id, name, phone, address);
+        // Kirim kembali customer yang diedit
+        if (mounted) Navigator.of(context).pop(editedCustomer);
       }
-      Navigator.of(context).pop();
     }
   }
 

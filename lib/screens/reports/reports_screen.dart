@@ -7,27 +7,79 @@ import 'package:pos_mutama/screens/reports/dashboard_view.dart';
 import 'package:pos_mutama/screens/reports/transaction_detail_screen.dart';
 import 'package:pos_mutama/utils/csv_helper.dart';
 
-class ReportsScreen extends ConsumerWidget {
+class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final transactions = ref.watch(transactionProvider);
-    
+  ConsumerState<ReportsScreen> createState() => _ReportsScreenState();
+}
+
+class _ReportsScreenState extends ConsumerState<ReportsScreen> {
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final allTransactions = ref.watch(transactionProvider);
+
+    final searchedTransactions = allTransactions.where((t) {
+      if (_searchQuery.isEmpty) return true;
+      return t.id.toLowerCase().contains(_searchQuery.toLowerCase());
+    }).toList();
+
     return DefaultTabController(
       length: 4,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Laporan'),
+          title: Container(
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Cari berdasarkan ID transaksi...',
+                prefixIcon: const Icon(Icons.search),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                        },
+                      )
+                    : null,
+              ),
+            ),
+          ),
           actions: [
             IconButton(
               icon: const Icon(Icons.download),
-              tooltip: 'Ekspor Semua Transaksi',
+              tooltip: 'Ekspor Transaksi Terfilter',
               onPressed: () async {
-                await exportTransactionsToCsv(transactions);
+                await exportTransactionsToCsv(searchedTransactions);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Laporan berhasil diekspor ke folder Download')),
+                    const SnackBar(content: Text('Laporan berhasil diekspor')),
                   );
                 }
               },
@@ -38,8 +90,8 @@ class ReportsScreen extends ConsumerWidget {
             tabs: [
               Tab(icon: Icon(Icons.dashboard), text: 'Dasbor'),
               Tab(icon: Icon(Icons.summarize), text: 'Ringkasan'),
-              Tab(icon: Icon(Icons.check), text: 'Lunas'),
-              Tab(icon: Icon(Icons.pending), text: 'Belum Lunas'),
+              Tab(icon: Icon(Icons.check_circle), text: 'Lunas'),
+              Tab(icon: Icon(Icons.credit_score), text: 'Utang/DP'),
             ],
           ),
         ),
@@ -47,8 +99,8 @@ class ReportsScreen extends ConsumerWidget {
           children: [
             const DashboardView(),
             const SummaryView(),
-            TransactionListView(transactions: transactions.where((t) => t.status == 'Lunas').toList()),
-            TransactionListView(transactions: transactions.where((t) => t.status == 'Belum Lunas').toList()),
+            TransactionListView(transactions: searchedTransactions.where((t) => t.status == 'Lunas').toList()),
+            TransactionListView(transactions: searchedTransactions.where((t) => t.status == 'Belum Lunas' || t.status == 'DP').toList()),
           ],
         ),
       ),
@@ -58,7 +110,7 @@ class ReportsScreen extends ConsumerWidget {
 
 class SummaryView extends ConsumerWidget {
   const SummaryView({super.key});
-  
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final totalRevenue = ref.watch(transactionProvider.notifier).totalRevenue;
@@ -91,7 +143,6 @@ class SummaryView extends ConsumerWidget {
   }
 }
 
-
 class TransactionListView extends StatelessWidget {
   final List<Transaction> transactions;
 
@@ -117,7 +168,7 @@ class TransactionListView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Pelanggan: ${transaction.customer?.name ?? 'Umum'}'),
-                Text(DateFormat('dd MMM yyyy, HH:mm').format(transaction.date)),
+                Text(DateFormat('dd MMM yy, HH:mm').format(transaction.date)),
               ],
             ),
             trailing: Column(
@@ -128,13 +179,13 @@ class TransactionListView extends StatelessWidget {
                 if (transaction.status != 'Lunas')
                   Text(
                     transaction.status,
-                    style: const TextStyle(
-                      color: Colors.orange,
+                    style: TextStyle(
+                      color: transaction.status == 'DP' ? Colors.blue : Colors.orange,
                       fontWeight: FontWeight.bold,
                     ),
                   )
                 else
-                   const Icon(Icons.check_circle, color: Colors.green),
+                  const Icon(Icons.check_circle, color: Colors.green),
               ],
             ),
             onTap: () {

@@ -20,15 +20,23 @@ class TransactionNotifier extends StateNotifier<List<Transaction>> {
     state = _box.values.toList()..sort((a, b) => b.date.compareTo(a.date));
   }
 
-  Future<void> addTransaction({
+  Future<Transaction> addTransaction({
     required List<TransactionItem> items,
     required int totalAmount,
     Customer? customer,
-    required String status,
     required int paidAmount,
     required int changeAmount,
     required String paymentMethod,
   }) async {
+    String status;
+    if (paidAmount >= totalAmount) {
+      status = 'Lunas';
+    } else if (paidAmount > 0) {
+      status = 'DP';
+    } else {
+      status = 'Belum Lunas';
+    }
+
     final newTransaction = Transaction(
       id: _uuid.v4(),
       date: DateTime.now(),
@@ -42,14 +50,21 @@ class TransactionNotifier extends StateNotifier<List<Transaction>> {
     );
     await _box.put(newTransaction.id, newTransaction);
     state = _box.values.toList()..sort((a, b) => b.date.compareTo(a.date));
+    return newTransaction;
   }
 
-  Future<void> payDebt(String transactionId) async {
+  Future<void> recordDebtPayment(String transactionId, int amountToPay) async {
     final transaction = _box.get(transactionId);
-    if (transaction != null && transaction.status == 'Belum Lunas') {
-      transaction.status = 'Lunas';
-      transaction.paidAmount = transaction.totalAmount;
-      transaction.changeAmount = 0;
+    if (transaction != null && transaction.status != 'Lunas') {
+      transaction.paidAmount += amountToPay;
+
+      if (transaction.paidAmount >= transaction.totalAmount) {
+        transaction.status = 'Lunas';
+        transaction.changeAmount = transaction.paidAmount - transaction.totalAmount;
+      } else {
+        transaction.status = 'DP';
+      }
+      
       await transaction.save();
       state = _box.values.toList()..sort((a, b) => b.date.compareTo(a.date));
     }
@@ -69,4 +84,3 @@ class TransactionNotifier extends StateNotifier<List<Transaction>> {
     });
   }
 }
-

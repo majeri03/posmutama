@@ -30,4 +30,22 @@ class Item extends HiveObject {
     this.barcode,
     required this.purchasePrice,
   });
+  
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'price': price,
+        'stock': stock,
+        'barcode': barcode,
+        'purchasePrice': purchasePrice,
+      };
+
+  factory Item.fromJson(Map<String, dynamic> json) => Item(
+        id: json['id'],
+        name: json['name'],
+        price: json['price'],
+        stock: json['stock'],
+        barcode: json['barcode'],
+        purchasePrice: json['purchasePrice'],
+      );
 }

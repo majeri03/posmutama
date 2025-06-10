@@ -44,4 +44,30 @@ class Transaction extends HiveObject {
     required this.changeAmount,
     required this.paymentMethod,
   });
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'date': date.toIso8601String(),
+        'items': items.map((item) => item.toJson()).toList(),
+        'totalAmount': totalAmount,
+        'customer': customer?.toJson(),
+        'status': status,
+        'paidAmount': paidAmount,
+        'changeAmount': changeAmount,
+        'paymentMethod': paymentMethod,
+      };
+
+  factory Transaction.fromJson(Map<String, dynamic> json) => Transaction(
+        id: json['id'],
+        date: DateTime.parse(json['date']),
+        items: List<TransactionItem>.from(
+            json['items']?.map((x) => TransactionItem.fromJson(x))),
+        totalAmount: json['totalAmount'],
+        customer: json['customer'] != null
+            ? Customer.fromJson(json['customer'])
+            : null,
+        status: json['status'],
+        paidAmount: json['paidAmount'],
+        changeAmount: json['changeAmount'],
+        paymentMethod: json['paymentMethod'],
+      );
 }

@@ -19,6 +19,7 @@ class _MainScreenState extends State<MainScreen> {
     InventoryScreen(),
     ReportsScreen(),
     CustomersScreen(),
+    SettingsScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -34,6 +35,7 @@ class _MainScreenState extends State<MainScreen> {
         child: _screens.elementAt(_selectedIndex),
       ),
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.point_of_sale),

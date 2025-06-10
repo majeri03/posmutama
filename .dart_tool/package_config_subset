@@ -106,6 +106,14 @@ dart_style
 3.0
 file:///home/codespace/.pub-cache/hosted/pub.dev/dart_style-2.3.8/
 file:///home/codespace/.pub-cache/hosted/pub.dev/dart_style-2.3.8/lib/
+dio
+2.18
+file:///home/codespace/.pub-cache/hosted/pub.dev/dio-5.8.0+1/
+file:///home/codespace/.pub-cache/hosted/pub.dev/dio-5.8.0+1/lib/
+dio_web_adapter
+3.3
+file:///home/codespace/.pub-cache/hosted/pub.dev/dio_web_adapter-2.1.1/
+file:///home/codespace/.pub-cache/hosted/pub.dev/dio_web_adapter-2.1.1/lib/
 equatable
 2.12
 file:///home/codespace/.pub-cache/hosted/pub.dev/equatable-2.0.7/
@@ -126,6 +134,10 @@ file_picker
 3.4
 file:///home/codespace/.pub-cache/hosted/pub.dev/file_picker-10.1.9/
 file:///home/codespace/.pub-cache/hosted/pub.dev/file_picker-10.1.9/lib/
+file_saver
+2.17
+file:///home/codespace/.pub-cache/hosted/pub.dev/file_saver-0.2.14/
+file:///home/codespace/.pub-cache/hosted/pub.dev/file_saver-0.2.14/lib/
 fixnum
 3.1
 file:///home/codespace/.pub-cache/hosted/pub.dev/fixnum-1.1.1/
