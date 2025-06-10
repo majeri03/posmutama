@@ -3,6 +3,7 @@ import 'package:pos_mutama/screens/customers/customers_screen.dart';
 import 'package:pos_mutama/screens/inventory/inventory_screen.dart';
 import 'package:pos_mutama/screens/pos/pos_screen.dart';
 import 'package:pos_mutama/screens/reports/reports_screen.dart';
+import 'package:pos_mutama/screens/settings/settings_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -52,6 +53,10 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.people),
             label: 'Pelanggan',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Pengaturan',
           ),
         ],
         currentIndex: _selectedIndex,

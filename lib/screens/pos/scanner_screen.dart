@@ -9,13 +9,11 @@ class ScannerScreen extends StatefulWidget {
 }
 
 class _ScannerScreenState extends State<ScannerScreen> {
-  // NEW: Controller untuk mengelola kamera scanner
   final MobileScannerController _controller = MobileScannerController(
-    detectionSpeed: DetectionSpeed.normal, // Kecepatan deteksi
-    facing: CameraFacing.back, // Gunakan kamera belakang
+    detectionSpeed: DetectionSpeed.normal,
+    facing: CameraFacing.back,
   );
 
-  // NEW: Flag untuk memastikan kita hanya memproses satu hasil scan
   bool _isProcessing = false;
 
   @override
@@ -26,7 +24,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // NEW: Dapatkan ukuran area scan window
     final scanWindow = Rect.fromCenter(
       center: MediaQuery.of(context).size.center(Offset.zero),
       width: 250,
@@ -37,32 +34,19 @@ class _ScannerScreenState extends State<ScannerScreen> {
       appBar: AppBar(
         title: const Text('Pindai Barcode'),
         actions: [
-          // NEW: Tombol untuk menyalakan senter
           IconButton(
             onPressed: () => _controller.toggleTorch(),
-            icon: ValueListenableBuilder(
-              valueListenable: _controller.torchState,
-              builder: (context, state, child) {
-                switch (state) {
-                  case TorchState.off:
-                    return const Icon(Icons.flash_off, color: Colors.grey);
-                  case TorchState.on:
-                    return const Icon(Icons.flash_on, color: Colors.yellow);
-                }
-              },
-            ),
+            icon: const Icon(Icons.flash_on),
+            tooltip: 'Senter',
           ),
         ],
       ),
-      // NEW: Gunakan Stack untuk menumpuk overlay di atas kamera
       body: Stack(
         children: [
-          // Layer 1: Tampilan kamera dari scanner
           MobileScanner(
             controller: _controller,
-            scanWindow: scanWindow, // Fokuskan area scan ke window yang ditentukan
+            scanWindow: scanWindow,
             onDetect: (capture) {
-              // Jika sedang memproses, abaikan hasil baru
               if (_isProcessing) return;
 
               final List<Barcode> barcodes = capture.barcodes;
@@ -70,19 +54,16 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 final String? code = barcodes.first.rawValue;
                 if (code != null) {
                   setState(() {
-                    _isProcessing = true; // Tandai sedang memproses
+                    _isProcessing = true;
                   });
-                  // Kirim hasil kembali ke halaman sebelumnya
                   Navigator.of(context).pop(code);
                 }
               }
             },
           ),
-          // Layer 2: Overlay untuk panduan visual
           CustomPaint(
             painter: ScannerOverlay(scanWindow: scanWindow),
           ),
-          // Layer 3: Teks instruksi untuk pengguna
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -105,7 +86,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
   }
 }
 
-// NEW: Widget CustomPaint untuk membuat overlay dengan "lubang" di tengah
 class ScannerOverlay extends CustomPainter {
   final Rect scanWindow;
 
@@ -124,17 +104,13 @@ class ScannerOverlay extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
 
-    // Gabungkan path untuk membuat "lubang"
     final overlayPath = Path.combine(
       PathOperation.difference,
       backgroundPath,
       cutoutPath,
     );
 
-    // Gambar overlay gelap
     canvas.drawPath(overlayPath, backgroundPaint);
-
-    // Gambar border putih di sekitar scan window
     canvas.drawRect(scanWindow, borderPaint);
   }
 
