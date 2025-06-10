@@ -55,7 +55,7 @@ class TransactionDetailScreen extends ConsumerWidget {
             tooltip: 'Edit Transaksi',
             onPressed: () {
               Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => EditTransactionScreen(transaction: transaction)
+                builder: (context) => EditTransactionScreen(originalTransaction: transaction)
               ));
             },
           ),

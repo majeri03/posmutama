@@ -11,6 +11,7 @@ import 'package:pos_mutama/models/transaction_item.dart';
 import 'package:pos_mutama/providers/customer_provider.dart';
 import 'package:pos_mutama/providers/item_provider.dart';
 import 'package:pos_mutama/providers/transaction_provider.dart';
+import 'package:collection/collection.dart';
 
 class EditTransactionScreen extends ConsumerStatefulWidget {
   final Transaction originalTransaction;
@@ -195,8 +196,8 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
             itemCount: searchedItems.length,
             itemBuilder: (context, index) {
               final item = searchedItems[index];
-              final originalTxItem = widget.originalTransaction.items.firstWhere((i) => i.id == item.id, orElse: () => null);
-              final itemInCart = _itemsInCart.firstWhere((i) => i.id == item.id, orElse: () => null);
+              final originalTxItem = widget.originalTransaction.items.firstWhereOrNull((i) => i.id == item.id);
+              final itemInCart = _itemsInCart.firstWhereOrNull((i) => i.id == item.id);
 
               final initialStock = item.stock + (originalTxItem?.quantity ?? 0);
               final displayedStock = initialStock - (itemInCart?.quantity ?? 0);

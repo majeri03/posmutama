@@ -12,6 +12,7 @@ import 'package:pos_mutama/screens/customers/add_edit_customer_screen.dart';
 import 'package:pos_mutama/screens/pos/receipt_screen.dart';
 import 'package:pos_mutama/screens/pos/scanner_screen.dart';
 import 'package:pos_mutama/models/transaction_item.dart';
+import 'package:collection/collection.dart';
 
 // Class POSScreen & _POSScreenState tidak ada perubahan
 
@@ -182,11 +183,7 @@ class _POSScreenState extends ConsumerState<POSScreen> {
             itemCount: _searchedItems.length,
             itemBuilder: (context, index) {
               final item = _searchedItems[index];
-              final TransactionItem? cartItem = cart.firstWhere((ci) => ci.id == item.id, orElse: () => null);
-              // 2. Cari item ini di dalam keranjang
-              final cartItem = cart.firstWhere((ci) => ci.id == item.id, orElse: () => null);
-              
-              // 3. Hitung stok yang akan ditampilkan (Stok Awal - Jumlah di Keranjang)
+              final TransactionItem? cartItem = cart.firstWhereOrNull((ci) => ci.id == item.id);
               final displayedStock = item.stock - (cartItem?.quantity ?? 0);
 
               return Card(
