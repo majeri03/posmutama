@@ -5,16 +5,20 @@ import 'package:pos_mutama/models/transaction.dart';
 import 'package:pos_mutama/models/transaction_item.dart';
 import 'package:pos_mutama/services/hive_service.dart';
 import 'package:uuid/uuid.dart';
+import 'package:pos_mutama/providers/item_provider.dart'; // Tambahkan import ini
 
 final transactionProvider = StateNotifierProvider<TransactionNotifier, List<Transaction>>((ref) {
-  return TransactionNotifier();
+  // Berikan 'ref' ke Notifier
+  return TransactionNotifier(ref);
 });
 
 class TransactionNotifier extends StateNotifier<List<Transaction>> {
   final Box<Transaction> _box;
   final _uuid = const Uuid();
 
-  TransactionNotifier()
+  final Ref _ref; 
+
+  TransactionNotifier(this._ref) // Ubah constructor
       : _box = Hive.box<Transaction>(HiveService.transactionsBoxName),
         super([]) {
     state = _box.values.toList()..sort((a, b) => b.date.compareTo(a.date));
@@ -68,6 +72,45 @@ class TransactionNotifier extends StateNotifier<List<Transaction>> {
       await transaction.save();
       state = _box.values.toList()..sort((a, b) => b.date.compareTo(a.date));
     }
+  }
+
+  // --- TAMBAHKAN METHOD BARU UNTUK HAPUS TRANSAKSI ---
+  Future<void> deleteTransaction(String transactionId) async {
+    final transaction = _box.get(transactionId);
+    if (transaction != null) {
+      // 1. Kembalikan stok semua item dalam transaksi ini
+      for (final item in transaction.items) {
+        _ref.read(itemProvider.notifier).adjustStock(item.id, item.quantity); // quantity positif = menambah stok
+      }
+
+      // 2. Hapus transaksi dari database
+      await _box.delete(transactionId);
+
+      // 3. Perbarui state untuk refresh UI
+      state = _box.values.toList()..sort((a, b) => b.date.compareTo(a.date));
+    }
+  }
+  
+  // --- TAMBAHKAN METHOD BARU UNTUK EDIT TRANSAKSI ---
+  Future<void> updateTransaction(Transaction oldTransaction, Transaction newTransaction) async {
+    // 1. Hitung perbedaan stok untuk setiap item
+    final allItemIds = {...oldTransaction.items.map((e) => e.id), ...newTransaction.items.map((e) => e.id)};
+
+    for (final itemId in allItemIds) {
+      final oldQty = oldTransaction.items.firstWhere((e) => e.id == itemId, orElse: () => null)?.quantity ?? 0;
+      final newQty = newTransaction.items.firstWhere((e) => e.id == itemId, orElse: () => null)?.quantity ?? 0;
+      final stockChange = oldQty - newQty; // Jika > 0, stok dikembalikan. Jika < 0, stok dikurangi.
+
+      if (stockChange != 0) {
+        _ref.read(itemProvider.notifier).adjustStock(itemId, stockChange);
+      }
+    }
+
+    // 2. Simpan objek transaksi yang sudah diperbarui
+    await _box.put(oldTransaction.id, newTransaction);
+    
+    // 3. Perbarui state
+    state = _box.values.toList()..sort((a, b) => b.date.compareTo(a.date));
   }
 
   double get totalRevenue {

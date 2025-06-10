@@ -18,20 +18,21 @@ class StoreInfoNotifier extends StateNotifier<StoreInfo?> {
     }
   }
 
-  Future<void> saveStoreInfo(String name, String address) async {
-    final storeInfo = StoreInfo(name: name, address: address);
+  Future<void> saveStoreInfo(String name, String address, String? phone) async {
+    final storeInfo = StoreInfo(name: name, address: address, phone: phone);
     await _box.clear();
     await _box.add(storeInfo);
     state = storeInfo;
   }
 
-  void updateStoreInfo(String name, String address) {
+  void updateStoreInfo(String name, String address, String? phone) {
      if (state != null) {
       state!.name = name;
       state!.address = address;
+      state!.phone = phone; // Tambahkan ini
       state!.save();
-      // To trigger UI update
-      state = StoreInfo(name: state!.name, address: state!.address);
+      // Perbarui state untuk refresh UI
+      state = StoreInfo(name: state!.name, address: state!.address, phone: state!.phone);
     }
   }
 }

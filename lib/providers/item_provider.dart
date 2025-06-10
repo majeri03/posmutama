@@ -31,6 +31,14 @@ class ItemNotifier extends StateNotifier<List<Item>> {
     state = _box.values.toList();
   }
 
+  Future<void> addImportedItem(Item item) async {
+    await _box.put(item.id, item);
+  }
+
+  bool itemExists(String id) {
+    return _box.containsKey(id);
+  }
+
   Future<void> editItem(String id, String name, int price, int stock, String? barcode, double purchasePrice) async {
     final item = _box.get(id);
     if (item != null) {
@@ -49,13 +57,19 @@ class ItemNotifier extends StateNotifier<List<Item>> {
     state = _box.values.toList();
   }
 
-  void updateStock(String id, int quantitySold) {
-    final item = _box.get(id);
+  void adjustStock(String itemId, int quantityChange) {
+    final item = _box.get(itemId);
     if (item != null) {
-      item.stock -= quantitySold;
+      // quantityChange bisa positif (mengembalikan stok) atau negatif (menjual)
+      item.stock += quantityChange;
       item.save();
-      state = _box.values.toList();
+      // Perbarui state agar UI yang bergantung pada itemProvider ikut refresh
+      state = _box.values.toList(); 
     }
+  }
+ 
+  void updateStock(String id, int quantitySold) {
+    adjustStock(id, -quantitySold); // Arahkan ke method baru
   }
 
   List<Item> searchItems(String query) {
@@ -65,5 +79,16 @@ class ItemNotifier extends StateNotifier<List<Item>> {
     return state.where((item) {
       return item.name.toLowerCase().contains(query.toLowerCase()) || (item.barcode?.contains(query) ?? false);
     }).toList();
+  }
+
+  Item? findItemByBarcode(String barcode) {
+    try {
+      // Mencari item pertama yang cocok dengan barcode.
+      return state.firstWhere((item) => item.barcode == barcode);
+    } catch (e) {
+      // Jika firstWhere tidak menemukan elemen, ia akan melempar error.
+      // Kita tangkap error tersebut dan mengembalikan null.
+      return null;
+    }
   }
 }

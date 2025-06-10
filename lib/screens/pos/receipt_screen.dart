@@ -50,6 +50,7 @@ class ReceiptScreen extends ConsumerWidget {
                     transaction,
                     storeInfo.name,
                     storeInfo.address,
+                    storeInfo.phone,
                   );
                   await Printing.layoutPdf(
                     onLayout: (format) async => pdfData,
@@ -70,6 +71,7 @@ class ReceiptScreen extends ConsumerWidget {
                     transaction,
                     storeInfo.name,
                     storeInfo.address,
+                    storeInfo.phone,
                   );
                   final xfile = XFile.fromData(
                     pdfData,

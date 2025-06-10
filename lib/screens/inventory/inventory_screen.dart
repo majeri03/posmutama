@@ -35,7 +35,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   @override
   Widget build(BuildContext context) {
     final items = ref.watch(itemProvider).where((item) {
-      return item.name.toLowerCase().contains(_searchQuery.toLowerCase());
+      if (_searchQuery.isEmpty) {
+        return true; // Jika tidak ada query, tampilkan semua item
+      }
+      final searchQuery = _searchQuery.toLowerCase();
+      final nameMatches = item.name.toLowerCase().contains(searchQuery);
+      // Cek barcode (pastikan barcode tidak null sebelum dicek)
+      final barcodeMatches = item.barcode?.toLowerCase().contains(searchQuery) ?? false;
+
+      // Kembalikan true jika nama atau barcode cocok
+      return nameMatches || barcodeMatches;
     }).toList();
     final numberFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
@@ -68,7 +77,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             child: TextField(
               controller: _searchController,
               decoration: const InputDecoration(
-                hintText: 'Cari item...',
+                hintText: 'Cari berdasarkan nama atau barcode...',
                 prefixIcon: Icon(Icons.search),
               ),
             ),
@@ -84,7 +93,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         child: ListTile(
                           title: Text(item.name),
-                          subtitle: Text('Stok: ${item.stock}'),
+                          subtitle: Text('Stok: ${item.stock} | Barcode: ${item.barcode ?? '-'}'),
                           trailing: Text(numberFormat.format(item.price)),
                           onTap: () {
                             showDialog(

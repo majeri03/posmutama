@@ -13,6 +13,7 @@ class _StoreInfoEditScreenState extends ConsumerState<StoreInfoEditScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
+  final _phoneController = TextEditingController();
 
   @override
   void initState() {
@@ -21,6 +22,7 @@ class _StoreInfoEditScreenState extends ConsumerState<StoreInfoEditScreen> {
     if (storeInfo != null) {
       _nameController.text = storeInfo.name;
       _addressController.text = storeInfo.address;
+      _phoneController.text = storeInfo.phone ?? '';
     }
   }
 
@@ -28,12 +30,13 @@ class _StoreInfoEditScreenState extends ConsumerState<StoreInfoEditScreen> {
   void dispose() {
     _nameController.dispose();
     _addressController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
   void _saveStoreInfo() {
     if (_formKey.currentState!.validate()) {
-      ref.read(storeInfoProvider.notifier).saveStoreInfo(_nameController.text, _addressController.text);
+      ref.read(storeInfoProvider.notifier).updateStoreInfo(_nameController.text, _addressController.text, _phoneController.text);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Informasi toko berhasil diperbarui')),
@@ -73,6 +76,16 @@ class _StoreInfoEditScreenState extends ConsumerState<StoreInfoEditScreen> {
                   prefixIcon: Icon(Icons.location_on),
                 ),
                 validator: (value) => value == null || value.isEmpty ? 'Alamat toko tidak boleh kosong' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _phoneController,
+                decoration: const InputDecoration(
+                  labelText: 'No. Telepon Toko (Opsional)',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.phone),
+                ),
+                keyboardType: TextInputType.phone,
               ),
               const SizedBox(height: 24),
               ElevatedButton(

@@ -50,6 +50,51 @@ class TransactionDetailScreen extends ConsumerWidget {
         title: const Text('Detail Transaksi'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.edit_note),
+            tooltip: 'Edit Transaksi',
+            onPressed: () {
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => EditTransactionScreen(transaction: transaction)
+              ));
+            },
+          ),
+          // --- TAMBAHKAN TOMBOL HAPUS ---
+          IconButton(
+            icon: const Icon(Icons.delete_forever),
+            tooltip: 'Hapus Transaksi',
+            onPressed: () {
+              // Tampilkan dialog konfirmasi yang aman
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Hapus Transaksi Ini?'),
+                  content: const Text(
+                      'Aksi ini tidak dapat dibatalkan. Stok barang akan dikembalikan. Anda yakin?'),
+                  actions: [
+                    TextButton(
+                      child: const Text('Batal'),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      onPressed: () async {
+                        await ref.read(transactionProvider.notifier).deleteTransaction(transaction.id);
+                        if (context.mounted) {
+                          Navigator.of(ctx).pop(); // Tutup dialog
+                          Navigator.of(context).pop(); // Kembali dari detail screen
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Transaksi berhasil dihapus.')),
+                          );
+                        }
+                      },
+                      child: const Text('Ya, Hapus'),
+                    )
+                  ],
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.print),
             tooltip: 'Cetak Ulang Struk',
             onPressed: () async {
@@ -58,6 +103,7 @@ class TransactionDetailScreen extends ConsumerWidget {
                   transaction,
                   storeInfo.name,
                   storeInfo.address,
+                  storeInfo.phone,
                 );
                 await Printing.layoutPdf(
                   onLayout: (format) async => pdfData,

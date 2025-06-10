@@ -32,6 +32,7 @@ Future<String> exportTransactionsToCsv(List<Transaction> transactions) async {
   return await _saveFileToDownloads(csv, 'transactions_export.csv');
 }
 
+// --- GANTI FUNGSI DI BAWAH INI ---
 Future<String> importItemsFromCsv(WidgetRef ref) async {
   FilePickerResult? result = await FilePicker.platform.pickFiles(
     type: FileType.custom,
@@ -44,20 +45,42 @@ Future<String> importItemsFromCsv(WidgetRef ref) async {
       final stringContent = await file.readAsString();
       final List<List<dynamic>> fields = const CsvToListConverter().convert(stringContent);
       
-      // Skip header row
+      final itemNotifier = ref.read(itemProvider.notifier);
+      int itemsAdded = 0;
+      int itemsSkipped = 0;
+
+      // Lewati baris header, mulai dari indeks 1
       for (var i = 1; i < fields.length; i++) {
         var row = fields[i];
-        if(row.length >= 5) {
-            final name = row[1].toString();
-            final purchasePrice = double.tryParse(row[2].toString()) ?? 0.0;
-            final price = int.tryParse(row[3].toString()) ?? 0;
-            final stock = int.tryParse(row[4].toString()) ?? 0;
-            final barcode = row.length > 5 && row[5].toString().isNotEmpty ? row[5].toString() : null;
-
-            await ref.read(itemProvider.notifier).addItem(name, price, stock, barcode, purchasePrice);
+        // Pastikan baris memiliki kolom yang cukup dan ID tidak kosong
+        if (row.isNotEmpty && row[0] != null && row[0].toString().isNotEmpty) {
+          final id = row[0].toString();
+          
+          // Cek apakah item dengan ID ini sudah ada
+          if (!itemNotifier.itemExists(id)) {
+            // Jika tidak ada, tambahkan item baru
+            final newItem = Item(
+              id: id,
+              name: row[1].toString(),
+              purchasePrice: double.tryParse(row[2].toString()) ?? 0.0,
+              price: int.tryParse(row[3].toString()) ?? 0,
+              stock: int.tryParse(row[4].toString()) ?? 0,
+              barcode: row.length > 5 && row[5].toString().isNotEmpty ? row[5].toString() : null,
+              purchasePrice: 0.0, // Anda mungkin perlu menyesuaikan ini
+            );
+            await itemNotifier.addImportedItem(newItem);
+            itemsAdded++;
+          } else {
+            // Jika sudah ada, lewati
+            itemsSkipped++;
+          }
         }
       }
-      return 'Import berhasil!';
+      
+      // Perbarui state setelah semua item ditambahkan
+      ref.read(itemProvider.notifier).state = ref.read(itemProvider.notifier).state.toList();
+
+      return 'Import selesai: $itemsAdded item ditambahkan, $itemsSkipped item dilewati karena ID sudah ada.';
     } catch (e) {
       return 'Error saat memproses file: $e';
     }

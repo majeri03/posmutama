@@ -73,10 +73,31 @@ class CartNotifier extends StateNotifier<List<TransactionItem>> {
     }
   }
 
+  void setQuantity(String itemId, int newQuantity) {
+    // Jika kuantitas baru adalah 0 atau kurang, hapus item dari keranjang
+    if (newQuantity <= 0) {
+      removeItem(itemId);
+      return;
+    }
+
+    state = [
+      for (final item in state)
+        if (item.id == itemId)
+          TransactionItem(
+              id: item.id,
+              name: item.name,
+              price: item.price,
+              quantity: newQuantity, // Set kuantitas baru
+              purchasePrice: item.purchasePrice)
+        else
+          item,
+    ];
+  }
+
   void clearCart() {
     state = [];
   }
-
+  
   int get totalAmount {
     return state.fold(0, (sum, item) => sum + (item.price * item.quantity));
   }

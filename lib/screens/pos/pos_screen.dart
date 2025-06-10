@@ -11,6 +11,7 @@ import 'package:pos_mutama/providers/transaction_provider.dart';
 import 'package:pos_mutama/screens/customers/add_edit_customer_screen.dart';
 import 'package:pos_mutama/screens/pos/receipt_screen.dart';
 import 'package:pos_mutama/screens/pos/scanner_screen.dart';
+import 'package:pos_mutama/models/transaction_item.dart';
 
 // Class POSScreen & _POSScreenState tidak ada perubahan
 
@@ -45,6 +46,66 @@ class _POSScreenState extends ConsumerState<POSScreen> {
     showDialog(
       context: context,
       builder: (context) => const PaymentDialog(),
+    );
+  }
+
+  // --- TAMBAHKAN METHOD DIALOG BARU DI SINI ---
+  void _showQuantityDialog(TransactionItem cartItem, int maxStock) {
+    final quantityController = TextEditingController(text: cartItem.quantity.toString());
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Ubah Kuantitas ${cartItem.name}'),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: quantityController,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: InputDecoration(
+                labelText: 'Jumlah',
+                hintText: 'Stok tersedia: $maxStock',
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Jumlah tidak boleh kosong';
+                }
+                final newQuantity = int.tryParse(value);
+                if (newQuantity == null) {
+                  return 'Masukkan angka yang valid';
+                }
+                if (newQuantity <= 0) {
+                  return 'Jumlah harus lebih dari 0';
+                }
+                if (newQuantity > maxStock) {
+                  return 'Jumlah melebihi stok (maks: $maxStock)';
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  final newQuantity = int.parse(quantityController.text);
+                  ref.read(cartProvider.notifier).setQuantity(cartItem.id, newQuantity);
+                  Navigator.of(context).pop();
+                }
+              },
+              child: const Text('Simpan'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -86,7 +147,14 @@ class _POSScreenState extends ConsumerState<POSScreen> {
     );
   }
   
+ // GANTI METHOD DI BAWAH INI
   Widget _buildItemGrid(List<Item> allItems) {
+    // =======================================================================
+    // PERUBAHAN UNTUK STOK REAL-TIME (BAGIAN 2)
+    // =======================================================================
+    // 1. Pantau (watch) состояние keranjang di sini
+    final cart = ref.watch(cartProvider);
+
     return Column(
       children: [
         Padding(
@@ -114,17 +182,29 @@ class _POSScreenState extends ConsumerState<POSScreen> {
             itemCount: _searchedItems.length,
             itemBuilder: (context, index) {
               final item = _searchedItems[index];
+
+              // 2. Cari item ini di dalam keranjang
+              final cartItem = cart.firstWhere((ci) => ci.id == item.id, orElse: () => null);
+              
+              // 3. Hitung stok yang akan ditampilkan (Stok Awal - Jumlah di Keranjang)
+              final displayedStock = item.stock - (cartItem?.quantity ?? 0);
+
               return Card(
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
-                  onTap: item.stock > 0 ? () => ref.read(cartProvider.notifier).addItem(item) : null,
+                  // 4. Gunakan displayedStock untuk menentukan apakah item bisa diklik
+                  onTap: displayedStock > 0
+                      ? () => ref.read(cartProvider.notifier).addItem(item)
+                      : null,
                   child: GridTile(
                     footer: GridTileBar(
                       backgroundColor: Colors.black45,
                       title: Text(item.name, overflow: TextOverflow.ellipsis),
-                      subtitle: Text('Stok: ${item.stock}'),
+                      // 5. Tampilkan displayedStock di subtitle
+                      subtitle: Text('Stok: $displayedStock'),
                     ),
-                    child: item.stock <= 0
+                    // 6. Gunakan displayedStock untuk menampilkan overlay "Stok Habis"
+                    child: displayedStock <= 0
                         ? Container(
                             color: Colors.black54,
                             child: const Center(
@@ -140,19 +220,60 @@ class _POSScreenState extends ConsumerState<POSScreen> {
       ],
     );
   }
-  
-  Widget _buildCart() {
-     final cart = ref.watch(cartProvider);
-     final totalAmount = ref.watch(cartProvider.notifier).totalAmount;
-     final allItems = ref.watch(itemProvider);
 
-     return Card(
+  
+  // GANTI METHOD DI BAWAH INI
+  Widget _buildCart() {
+    final cart = ref.watch(cartProvider);
+    final totalAmount = ref.watch(cartProvider.notifier).totalAmount;
+    final allItems = ref.watch(itemProvider);
+    final numberFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+
+    return Card(
       margin: const EdgeInsets.all(8.0),
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text('Keranjang', style: Theme.of(context).textTheme.headlineSmall),
+            padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Keranjang', style: Theme.of(context).textTheme.headlineSmall),
+                // ========================================================
+                // PERUBAHAN UNTUK TOMBOL RESET (BAGIAN 1)
+                // ========================================================
+                // Tampilkan tombol hanya jika keranjang tidak kosong
+                if (cart.isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.delete_sweep_outlined),
+                    color: Colors.red,
+                    tooltip: 'Kosongkan Keranjang',
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Konfirmasi'),
+                          content: const Text('Anda yakin ingin mengosongkan keranjang?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              child: const Text('Batal'),
+                            ),
+                            TextButton(
+                              style: TextButton.styleFrom(foregroundColor: Colors.red),
+                              onPressed: () {
+                                ref.read(cartProvider.notifier).clearCart();
+                                Navigator.of(ctx).pop();
+                              },
+                              child: const Text('Ya, Kosongkan'),
+                            )
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            ),
           ),
           Expanded(
             child: cart.isEmpty
@@ -161,9 +282,13 @@ class _POSScreenState extends ConsumerState<POSScreen> {
                     itemCount: cart.length,
                     itemBuilder: (context, index) {
                       final cartItem = cart[index];
+                      // Ambil stok asli dari 'allItems' untuk validasi
+                      final originalItem = allItems.firstWhere((item) => item.id == cartItem.id,
+                          orElse: () => Item(id: '', name: '', price: 0, stock: 0, purchasePrice: 0));
+
                       return ListTile(
                         title: Text(cartItem.name),
-                        subtitle: Text('${cartItem.quantity} x Rp ${cartItem.price}'),
+                        subtitle: Text(numberFormat.format(cartItem.price)),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -171,10 +296,25 @@ class _POSScreenState extends ConsumerState<POSScreen> {
                               icon: const Icon(Icons.remove_circle_outline),
                               onPressed: () => ref.read(cartProvider.notifier).decreaseQuantity(cartItem.id),
                             ),
+                            GestureDetector(
+                              onTap: () {
+                                _showQuantityDialog(cartItem, originalItem.stock);
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey.shade300),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  cartItem.quantity.toString(),
+                                  style: Theme.of(context).textTheme.titleMedium,
+                                ),
+                              ),
+                            ),
                             IconButton(
                               icon: const Icon(Icons.add_circle_outline),
                               onPressed: () {
-                                final originalItem = allItems.firstWhere((item) => item.id == cartItem.id);
                                 if (cartItem.quantity < originalItem.stock) {
                                   ref.read(cartProvider.notifier).increaseQuantity(cartItem.id);
                                 } else {
@@ -199,7 +339,8 @@ class _POSScreenState extends ConsumerState<POSScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('Total:', style: Theme.of(context).textTheme.titleLarge),
-                    Text('Rp $totalAmount', style: Theme.of(context).textTheme.titleLarge),
+                    Text(numberFormat.format(totalAmount),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -223,6 +364,7 @@ class _POSScreenState extends ConsumerState<POSScreen> {
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -237,7 +379,30 @@ class _POSScreenState extends ConsumerState<POSScreen> {
               );
 
               if (code != null && code.isNotEmpty) {
-                _searchController.text = code;
+                final item = ref.read(itemProvider.notifier).findItemByBarcode(code);
+
+                if (item != null) {
+                  ref.read(cartProvider.notifier).addItem(item);
+                  
+                  if(mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${item.name} ditambahkan ke keranjang.'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                } else {
+                   if(mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Error: Barcode tidak ditemukan di database.'),
+                        backgroundColor: Colors.red,
+                        duration: Duration(seconds: 3),
+                      ),
+                    );
+                  }
+                }
               }
             },
           ),

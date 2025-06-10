@@ -14,11 +14,13 @@ class _StoreSetupScreenState extends ConsumerState<StoreSetupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
+  final _phoneController = TextEditingController(); 
 
   @override
   void dispose() {
     _nameController.dispose();
     _addressController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -26,7 +28,7 @@ class _StoreSetupScreenState extends ConsumerState<StoreSetupScreen> {
     if (_formKey.currentState!.validate()) {
       await ref
           .read(storeInfoProvider.notifier)
-          .saveStoreInfo(_nameController.text, _addressController.text);
+          .saveStoreInfo(_nameController.text, _addressController.text, _phoneController.text);
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
@@ -93,6 +95,16 @@ class _StoreSetupScreenState extends ConsumerState<StoreSetupScreen> {
                       }
                       return null;
                     },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _phoneController,
+                    decoration: const InputDecoration(
+                      labelText: 'No. Telepon Toko (Opsional)',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.phone),
+                    ),
+                    keyboardType: TextInputType.phone,
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
