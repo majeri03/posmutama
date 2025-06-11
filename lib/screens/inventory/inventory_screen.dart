@@ -187,8 +187,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         child: ListTile(
                           title: Text(item.name),
-                          subtitle: Text('Stok: ${item.stock} | Barcode: ${item.barcode ?? '-'}'),
-                          trailing: Text(numberFormat.format(item.price)),
+                          subtitle: Text('Stok Dasar: ${item.stockInBaseUnit} ${item.units.first.name} | Barcode: ${item.barcode ?? '-'}'),
+                          // Tampilkan harga jual dari satuan dasar (unit pertama)
+                          trailing: Text(numberFormat.format(item.units.first.price)),
                           onTap: () {
                             showDialog(
                               context: context,
