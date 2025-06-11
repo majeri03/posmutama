@@ -35,6 +35,9 @@ class HiveService {
     if (!Hive.isAdapterRegistered(StoreInfoAdapter().typeId)) {
       Hive.registerAdapter(StoreInfoAdapter());
     }
+    if (!Hive.isAdapterRegistered(ItemUnitAdapter().typeId)) {
+      Hive.registerAdapter(ItemUnitAdapter());
+    }
   }
 
   Future<void> openBoxes() async {
@@ -42,6 +45,7 @@ class HiveService {
     await Hive.openBox<Item>(itemsBoxName);
     await Hive.openBox<Transaction>(transactionsBoxName);
     await Hive.openBox<StoreInfo>(storeInfoBoxName);
+    await Hive.openBox<ItemUnit>('itemUnits'); 
   }
 }
 

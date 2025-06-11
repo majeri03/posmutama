@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pos_mutama/models/item.dart';
 import 'package:pos_mutama/models/transaction_item.dart';
+import 'package:pos_mutama/models/item_unit.dart';
 
 final cartProvider = StateNotifierProvider<CartNotifier, List<TransactionItem>>((ref) {
   return CartNotifier();
@@ -9,86 +10,72 @@ final cartProvider = StateNotifierProvider<CartNotifier, List<TransactionItem>>(
 class CartNotifier extends StateNotifier<List<TransactionItem>> {
   CartNotifier() : super([]);
 
-  void addItem(Item item) {
-    final existingItemIndex = state.indexWhere((txItem) => txItem.id == item.id);
+  void addItem(Item item, ItemUnit unit) {
+    final existingItemIndex = state.indexWhere((txItem) => txItem.id == item.id && txItem.unitName == unit.name);
+
+    // Dapatkan stok item asli dalam satuan dasar
+    final stockInBaseUnit = item.stockInBaseUnit;
+    // Hitung total stok yang sudah ada di keranjang untuk item ini (dalam satuan dasar)
+    int currentCartStock = 0;
+    for(final cartItem in state) {
+      if(cartItem.id == item.id) {
+        currentCartStock += cartItem.quantity * cartItem.conversionRate;
+      }
+    }
+    
+    // Stok yang tersisa dalam satuan dasar
+    final remainingStock = stockInBaseUnit - currentCartStock;
 
     if (existingItemIndex != -1) {
-      final updatedItem = state[existingItemIndex];
-      if (updatedItem.quantity < item.stock) {
+      // Jika item dengan satuan yang sama sudah ada, tambah kuantitasnya
+      // Pastikan penambahan tidak melebihi stok
+      if (remainingStock >= unit.conversionRate) {
+        final updatedItem = state[existingItemIndex];
         updatedItem.quantity++;
         state = List.from(state);
       }
     } else {
-      if (item.stock > 0) {
+      // Jika item baru atau satuan berbeda, tambahkan ke keranjang
+      // Pastikan stok cukup untuk 1 unit baru ini
+       if (remainingStock >= unit.conversionRate) {
         state = [
           ...state,
           TransactionItem(
             id: item.id,
             name: item.name,
-            price: item.price,
+            price: unit.price,
             quantity: 1,
-            purchasePrice: item.purchasePrice,
+            purchasePrice: unit.purchasePrice,
+            unitName: unit.name,
+            conversionRate: unit.conversionRate,
           ),
         ];
       }
     }
   }
 
-  void removeItem(String itemId) {
-    state = state.where((item) => item.id != itemId).toList();
+  void removeItem(String itemId, String unitName) {
+    state = state.where((item) => !(item.id == itemId && item.unitName == unitName)).toList();
   }
 
-  void increaseQuantity(String itemId) {
-    state = [
-      for (final item in state)
-        if (item.id == itemId)
-          TransactionItem(
-              id: item.id,
-              name: item.name,
-              price: item.price,
-              quantity: item.quantity + 1,
-              purchasePrice: item.purchasePrice)
-        else
-          item,
-    ];
-  }
-
-  void decreaseQuantity(String itemId) {
-    final itemToDecrease = state.firstWhere((item) => item.id == itemId);
-    if (itemToDecrease.quantity > 1) {
-      state = [
-        for (final item in state)
-          if (item.id == itemId)
-            TransactionItem(
-                id: item.id,
-                name: item.name,
-                price: item.price,
-                quantity: item.quantity - 1,
-                purchasePrice: item.purchasePrice)
-          else
-            item,
-      ];
-    } else {
-      removeItem(itemId);
-    }
-  }
-
-  void setQuantity(String itemId, int newQuantity) {
-    // Jika kuantitas baru adalah 0 atau kurang, hapus item dari keranjang
+  
+  void setQuantity(String itemId, String unitName, int newQuantity) {
     if (newQuantity <= 0) {
-      removeItem(itemId);
+      removeItem(itemId, unitName);
       return;
     }
 
     state = [
       for (final item in state)
-        if (item.id == itemId)
+        if (item.id == itemId && item.unitName == unitName)
           TransactionItem(
               id: item.id,
               name: item.name,
               price: item.price,
-              quantity: newQuantity, // Set kuantitas baru
-              purchasePrice: item.purchasePrice)
+              quantity: newQuantity,
+              purchasePrice: item.purchasePrice,
+              unitName: item.unitName,
+              conversionRate: item.conversionRate)
         else
           item,
     ];

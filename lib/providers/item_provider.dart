@@ -3,6 +3,7 @@ import 'package:hive/hive.dart';
 import 'package:pos_mutama/models/item.dart';
 import 'package:pos_mutama/services/hive_service.dart';
 import 'package:uuid/uuid.dart';
+import 'package:pos_mutama/models/item_unit.dart';
 
 final itemProvider = StateNotifierProvider<ItemNotifier, List<Item>>((ref) {
   return ItemNotifier();
@@ -18,14 +19,13 @@ class ItemNotifier extends StateNotifier<List<Item>> {
     state = _box.values.toList();
   }
 
-  Future<void> addItem(String name, int price, int stock, String? barcode, double purchasePrice) async {
+  Future<void> addItem(String name, int stockInBaseUnit, String? barcode, List<ItemUnit> units) async {
     final newItem = Item(
       id: _uuid.v4(),
       name: name,
-      price: price,
-      stock: stock,
+      stockInBaseUnit: stockInBaseUnit,
       barcode: barcode,
-      purchasePrice: purchasePrice,
+      units: units,
     );
     await _box.put(newItem.id, newItem);
     state = _box.values.toList();
@@ -39,14 +39,13 @@ class ItemNotifier extends StateNotifier<List<Item>> {
     return _box.containsKey(id);
   }
 
-  Future<void> editItem(String id, String name, int price, int stock, String? barcode, double purchasePrice) async {
+  Future<void> editItem(String id, String name, int stockInBaseUnit, String? barcode, List<ItemUnit> units) async {
     final item = _box.get(id);
     if (item != null) {
       item.name = name;
-      item.price = price;
-      item.stock = stock;
+      item.stockInBaseUnit = stockInBaseUnit;
       item.barcode = barcode;
-      item.purchasePrice = purchasePrice;
+      item.units = units;
       await item.save();
       state = _box.values.toList();
     }
@@ -57,14 +56,14 @@ class ItemNotifier extends StateNotifier<List<Item>> {
     state = _box.values.toList();
   }
 
-  void adjustStock(String itemId, int quantityChange) {
+  void adjustStock(String itemId, int quantityChangeInBaseUnit) {
     final item = _box.get(itemId);
     if (item != null) {
       // quantityChange bisa positif (mengembalikan stok) atau negatif (menjual)
-      item.stock += quantityChange;
+      item.stockInBaseUnit += quantityChangeInBaseUnit;
       item.save();
       // Perbarui state agar UI yang bergantung pada itemProvider ikut refresh
-      state = _box.values.toList(); 
+      state = _box.values.toList();
     }
   }
  

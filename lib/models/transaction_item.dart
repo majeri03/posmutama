@@ -19,12 +19,20 @@ class TransactionItem extends HiveObject {
   @HiveField(4)
   double purchasePrice;
 
+  @HiveField(5) // Field baru
+  String unitName; // Nama satuan yang dibeli (e.g., "Pcs", "Dus")
+
+  @HiveField(6) // Field baru
+  int conversionRate; // Rate konversi dari satuan yang dibeli
+
   TransactionItem({
     required this.id,
     required this.name,
     required this.price,
     required this.quantity,
     required this.purchasePrice,
+    required this.unitName,
+    required this.conversionRate,
   });
 
   Map<String, dynamic> toJson() => {
@@ -33,6 +41,8 @@ class TransactionItem extends HiveObject {
         'price': price,
         'quantity': quantity,
         'purchasePrice': purchasePrice,
+        'unitName': unitName,
+        'conversionRate': conversionRate,
       };
 
   factory TransactionItem.fromJson(Map<String, dynamic> json) =>
@@ -42,5 +52,7 @@ class TransactionItem extends HiveObject {
         price: json['price'],
         quantity: json['quantity'],
         purchasePrice: json['purchasePrice'],
+        unitName: json['unitName'],
+        conversionRate: json['conversionRate'],
       );
 }
