@@ -32,6 +32,93 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     super.dispose();
   }
 
+  // TAMBAHKAN METHOD BARU INI
+  void _showCsvFormatDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final headerStyle = const TextStyle(fontWeight: FontWeight.bold);
+        return AlertDialog(
+          title: const Text('Contoh Format CSV untuk Impor'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                    'Gunakan format ini di file CSV Anda. Setiap baris mewakili satu satuan produk.\n'),
+                Table(
+                  border: TableBorder.all(),
+                  columnWidths: const {
+                    0: IntrinsicColumnWidth(),
+                    1: IntrinsicColumnWidth(),
+                    2: IntrinsicColumnWidth(),
+                  },
+                  children: [
+                    TableRow(children: [
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('item_id', style: headerStyle)),
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('item_name', style: headerStyle)),
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('item_barcode', style: headerStyle)),
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('stock_in_base_unit', style: headerStyle)),
+                    ]),
+                     TableRow(children: [
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('uuid-123')),
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('Semen Gresik')),
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('899...')),
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('100')),
+                    ]),
+                     TableRow(children: [
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('uuid-123')),
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('Semen Gresik')),
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('899...')),
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('100')),
+                    ]),
+                  ],
+                ),
+                 const SizedBox(height: 8),
+                 Table(
+                  border: TableBorder.all(),
+                  columnWidths: const {
+                    0: IntrinsicColumnWidth(),
+                    1: IntrinsicColumnWidth(),
+                    2: IntrinsicColumnWidth(),
+                    3: IntrinsicColumnWidth(),
+                  },
+                   children: [
+                     TableRow(children: [
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('unit_name', style: headerStyle)),
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('unit_purchase_price', style: headerStyle)),
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('unit_sell_price', style: headerStyle)),
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('unit_conversion_rate', style: headerStyle)),
+                    ]),
+                     TableRow(children: [
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('Sak')),
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('50000')),
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('55000')),
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('1')),
+                    ]),
+                     TableRow(children: [
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('Palet')),
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('4000000')),
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('4400000')),
+                      Padding(padding: const EdgeInsets.all(8.0), child: Text('80')),
+                    ]),
+                   ],
+                 )
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Tutup'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final items = ref.watch(itemProvider).where((item) {
@@ -66,6 +153,13 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
               await exportItemsToCsv(items);
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Data item diekspor')));
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            tooltip: 'Lihat Format CSV',
+            onPressed: () {
+              _showCsvFormatDialog(context);
             },
           ),
         ],

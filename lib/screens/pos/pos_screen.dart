@@ -110,6 +110,43 @@ class _POSScreenState extends ConsumerState<POSScreen> {
     );
   }
 
+  void _showUnitSelectionDialog(Item item) {
+    showDialog(
+        context: context,
+        builder: (context) {
+            return AlertDialog(
+                title: Text('Pilih Satuan untuk ${item.name}'),
+                content: SizedBox(
+                    width: double.maxFinite,
+                    child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: item.units.length,
+                        itemBuilder: (context, index) {
+                            final unit = item.units[index];
+                            return ListTile(
+                                title: Text(unit.name),
+                                subtitle: Text('Harga: Rp ${unit.price}'),
+                                onTap: () {
+                                    // Kirim unit yang dipilih kembali dan tutup dialog
+                                    Navigator.of(context).pop(unit);
+                                },
+                            );
+                        },
+                    ),
+                ),
+                actions: [
+                  TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Batal'))
+                ],
+            );
+        },
+    ).then((selectedUnit) {
+        // Setelah dialog ditutup dan ada unit yang dipilih
+        if (selectedUnit != null && selectedUnit is ItemUnit) {
+            ref.read(cartProvider.notifier).addItem(item, selectedUnit);
+        }
+    });
+}
+
   Widget _buildWideLayout() {
     final allItems = ref.watch(itemProvider);
      if (_searchedItems.isEmpty && _searchController.text.isEmpty) {
@@ -191,8 +228,16 @@ class _POSScreenState extends ConsumerState<POSScreen> {
                 child: InkWell(
                   // 4. Gunakan displayedStock untuk menentukan apakah item bisa diklik
                   onTap: displayedStock > 0
-                      ? () => ref.read(cartProvider.notifier).addItem(item)
-                      : null,
+                    ? () {
+                        if (item.units.length > 1) {
+                            // Jika satuan lebih dari 1, tampilkan dialog
+                            _showUnitSelectionDialog(item);
+                        } else {
+                            // Jika hanya 1, langsung tambahkan
+                            ref.read(cartProvider.notifier).addItem(item, item.units.first);
+                        }
+                    }
+                    : null,
                   child: GridTile(
                     footer: GridTileBar(
                       backgroundColor: Colors.black45,
@@ -284,7 +329,7 @@ class _POSScreenState extends ConsumerState<POSScreen> {
                           orElse: () => Item(id: '', name: '', price: 0, stock: 0, purchasePrice: 0));
 
                       return ListTile(
-                        title: Text(cartItem.name),
+                        title: Text('${cartItem.name} (${cartItem.unitName})'),
                         subtitle: Text(numberFormat.format(cartItem.price)),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -464,9 +509,6 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
         paymentMethod: (paidAmount > 0) ? _paymentMethod : 'N/A',
       );
 
-      for (var cartItem in cart) {
-        ref.read(itemProvider.notifier).updateStock(cartItem.id, cartItem.quantity);
-      }
       
       ref.read(cartProvider.notifier).clearCart();
       

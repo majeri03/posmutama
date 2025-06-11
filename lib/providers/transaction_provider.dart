@@ -52,6 +52,15 @@ class TransactionNotifier extends StateNotifier<List<Transaction>> {
       changeAmount: changeAmount,
       paymentMethod: paymentMethod,
     );
+
+    // TAMBAHKAN LOOP BARU DI SINI
+    // Loop ini akan mengurangi stok berdasarkan satuan dasar
+    for (var cartItem in items) {
+      // Hitung total stok dasar yang harus dikurangi
+      final stockToReduce = cartItem.quantity * cartItem.conversionRate; 
+      _ref.read(itemProvider.notifier).adjustStock(cartItem.id, -stockToReduce);
+    }
+
     await _box.put(newTransaction.id, newTransaction);
     state = _box.values.toList()..sort((a, b) => b.date.compareTo(a.date));
     return newTransaction;
@@ -80,8 +89,9 @@ class TransactionNotifier extends StateNotifier<List<Transaction>> {
     if (transaction != null) {
       // 1. Kembalikan stok semua item dalam transaksi ini
       for (final item in transaction.items) {
-        _ref.read(itemProvider.notifier).adjustStock(item.id, item.quantity); // quantity positif = menambah stok
-      }
+      final stockToReturn = item.quantity * item.conversionRate;
+      _ref.read(itemProvider.notifier).adjustStock(item.id, stockToReturn);
+    }
 
       // 2. Hapus transaksi dari database
       await _box.delete(transactionId);
@@ -97,13 +107,13 @@ class TransactionNotifier extends StateNotifier<List<Transaction>> {
     final allItemIds = {...oldTransaction.items.map((e) => e.id), ...newTransaction.items.map((e) => e.id)};
 
     for (final itemId in allItemIds) {
-      final oldItem = oldTransaction.items.where((e) => e.id == itemId);
-      final newItem = newTransaction.items.where((e) => e.id == itemId);
+      final oldTxItem = oldTransaction.items.firstWhereOrNull((e) => e.id == itemId);
+      final newTxItem = newTransaction.items.firstWhereOrNull((e) => e.id == itemId);
 
-      final oldQty = oldItem.isEmpty ? 0 : oldItem.first.quantity;
-      final newQty = newItem.isEmpty ? 0 : newItem.first.quantity;
+      final oldQtyInBase = oldTxItem != null ? oldTxItem.quantity * oldTxItem.conversionRate : 0;
+      final newQtyInBase = newTxItem != null ? newTxItem.quantity * newTxItem.conversionRate : 0;
       
-      final stockChange = oldQty - newQty; 
+      final stockChange = oldQtyInBase - newQtyInBase; 
 
       if (stockChange != 0) {
         _ref.read(itemProvider.notifier).adjustStock(itemId, stockChange);

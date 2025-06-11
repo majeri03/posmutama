@@ -10,6 +10,7 @@ import 'package:pos_mutama/models/item.dart';
 import 'package:pos_mutama/models/store_info.dart';
 import 'package:pos_mutama/models/transaction.dart';
 import 'package:pos_mutama/services/hive_service.dart';
+import 'package:path/path.dart' as p;
 
 class BackupRestoreHelper {
   Future<String> createBackup() async {
@@ -28,24 +29,27 @@ class BackupRestoreHelper {
 
       final jsonString = jsonEncode(backupData);
       final timestamp = DateFormat('yyyy-MM-dd_HH-mm').format(DateTime.now());
-      final fileName = 'posmutama_backup_$timestamp';
+      final fileName = 'posmutama_backup_$timestamp.json';
       
       // Ubah String menjadi Uint8List
       Uint8List bytes = utf8.encode(jsonString);
 
-      // Simpan file JSON menggunakan file_saver
-      String? path = await FileSaver.instance.saveFile(
-        name: fileName,
-        bytes: bytes,
-        ext: 'json',
-        mimeType: MimeType.json,
+      // 1. Minta pengguna memilih direktori
+      String? directoryPath = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: 'Pilih Folder untuk Menyimpan Backup',
       );
 
-      if (path != null) {
-        return 'Backup berhasil disimpan di folder Downloads.';
-      } else {
-        return 'Gagal menyimpan backup.';
+      // 2. Cek jika pengguna batal
+      if (directoryPath == null) {
+        return 'Penyimpanan backup dibatalkan.';
       }
+
+      // 3. Buat path lengkap dan simpan file
+      final String filePath = p.join(directoryPath, fileName);
+      final file = File(filePath);
+      await file.writeAsBytes(bytes);
+
+      return 'Backup berhasil disimpan di: $filePath';
 
     } catch (e) {
       return 'Gagal membuat backup: $e';
