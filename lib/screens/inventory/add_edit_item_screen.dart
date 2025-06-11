@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pos_mutama/models/item.dart';
 import 'package:pos_mutama/providers/item_provider.dart';
 import 'package:pos_mutama/screens/pos/scanner_screen.dart';
+import 'package:pos_mutama/models/item_unit.dart';
 
 class AddEditItemScreen extends ConsumerStatefulWidget {
   final Item? item;
@@ -21,6 +22,27 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   late TextEditingController _barcodeController;
 
   List<Map<String, TextEditingController>> _unitControllers = [];
+
+  // PINDAHKAN METHOD KE SINI, MENJADI METHOD CLASS
+  void _addUnitController({String? name, String? purchasePrice, String? price, String? conversionRate}) {
+    setState(() {
+      _unitControllers.add({
+        'name': TextEditingController(text: name ?? ''),
+        'purchasePrice': TextEditingController(text: purchasePrice ?? ''),
+        'price': TextEditingController(text: price ?? ''),
+        'conversionRate': TextEditingController(text: conversionRate ?? (_unitControllers.isEmpty ? '1' : '')),
+      });
+    });
+  }
+
+  // PINDAHKAN METHOD KE SINI, MENJADI METHOD CLASS
+  void _removeUnitController(int index) {
+    setState(() {
+      // dispose controllers sebelum dihapus
+      _unitControllers[index].values.forEach((controller) => controller.dispose());
+      _unitControllers.removeAt(index);
+    });
+  }
 
   @override
   void initState() {
@@ -45,25 +67,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
       _addUnitController();
     }
 
-    void _addUnitController({String? name, String? purchasePrice, String? price, String? conversionRate}) {
-    setState(() {
-      _unitControllers.add({
-        'name': TextEditingController(text: name ?? ''),
-        'purchasePrice': TextEditingController(text: purchasePrice ?? ''),
-        'price': TextEditingController(text: price ?? ''),
-        'conversionRate': TextEditingController(text: conversionRate ?? (_unitControllers.isEmpty ? '1' : '')),
-        });
-      });
-    }
-
-    void _removeUnitController(int index) {
-      setState(() {
-        _unitControllers[index].values.forEach((controller) => controller.dispose());
-        _unitControllers.removeAt(index);
-      });
-    }
-  }
-
+    
   @override
   void dispose() {
     _nameController.dispose();

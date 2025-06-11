@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pos_mutama/models/item.dart';
 import 'package:pos_mutama/models/transaction.dart';
 import 'package:pos_mutama/providers/item_provider.dart';
-import 'package.path/path.dart' as p;
+import 'package:path/path.dart' as p;
 
 Future<String> exportItemsToCsv(List<Item> items) async {
   List<List<dynamic>> rows = [];

@@ -5,6 +5,7 @@ import 'package:pos_mutama/models/item.dart';
 import 'package:pos_mutama/models/store_info.dart';
 import 'package:pos_mutama/models/transaction.dart';
 import 'package:pos_mutama/models/transaction_item.dart';
+import 'package:pos_mutama/models/item_unit.dart';
 
 class HiveService {
   static const String customersBoxName = 'customers';

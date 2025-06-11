@@ -7,6 +7,7 @@
       "name": "pos_mutama",
       "version": "1.0.0+1",
       "dependencies": [
+        "collection",
         "csv",
         "cupertino_icons",
         "file_picker",
@@ -18,6 +19,7 @@
         "hive_flutter",
         "intl",
         "mobile_scanner",
+        "path",
         "path_provider",
         "pdf",
         "permission_handler",
@@ -78,6 +80,16 @@
         "vector_math",
         "vm_service"
       ]
+    },
+    {
+      "name": "path",
+      "version": "1.9.1",
+      "dependencies": []
+    },
+    {
+      "name": "collection",
+      "version": "1.19.1",
+      "dependencies": []
     },
     {
       "name": "fl_chart",
@@ -207,18 +219,8 @@
       ]
     },
     {
-      "name": "path",
-      "version": "1.9.1",
-      "dependencies": []
-    },
-    {
       "name": "term_glyph",
       "version": "1.2.2",
-      "dependencies": []
-    },
-    {
-      "name": "collection",
-      "version": "1.19.1",
       "dependencies": []
     },
     {
@@ -888,14 +890,6 @@
       ]
     },
     {
-      "name": "watcher",
-      "version": "1.1.1",
-      "dependencies": [
-        "async",
-        "path"
-      ]
-    },
-    {
       "name": "pool",
       "version": "1.5.1",
       "dependencies": [
@@ -971,6 +965,14 @@
         "http_parser",
         "meta",
         "web"
+      ]
+    },
+    {
+      "name": "watcher",
+      "version": "1.1.2",
+      "dependencies": [
+        "async",
+        "path"
       ]
     },
     {

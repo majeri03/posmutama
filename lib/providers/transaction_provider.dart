@@ -6,6 +6,7 @@ import 'package:pos_mutama/models/transaction_item.dart';
 import 'package:pos_mutama/services/hive_service.dart';
 import 'package:uuid/uuid.dart';
 import 'package:pos_mutama/providers/item_provider.dart'; // Tambahkan import ini
+import 'package:collection/collection.dart';
 
 final transactionProvider = StateNotifierProvider<TransactionNotifier, List<Transaction>>((ref) {
   // Berikan 'ref' ke Notifier

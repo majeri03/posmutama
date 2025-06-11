@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pos_mutama/screens/customers/customers_screen.dart';
 import 'package:pos_mutama/screens/inventory/inventory_screen.dart';
 import 'package:pos_mutama/screens/pos/pos_screen.dart';
 import 'package:pos_mutama/screens/reports/reports_screen.dart';
 import 'package:pos_mutama/screens/settings/settings_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pos_mutama/utils/backup_restore_helper.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
@@ -32,7 +35,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   @override
   void initState() {
     super.initState();
-    // Panggil pengecekan setelah frame pertama selesai di-render
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAndTriggerAutoBackup();
     });
@@ -40,16 +42,15 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   Future<void> _checkAndTriggerAutoBackup() async {
     final prefs = await SharedPreferences.getInstance();
-    // Ambil timestamp backup terakhir, jika tidak ada, anggap 0
     final lastBackupTimestamp = prefs.getInt('lastBackupTimestamp') ?? 0;
     final now = DateTime.now().millisecondsSinceEpoch;
-    
-    // Durasi 7 hari dalam milidetik
     const sevenDaysInMillis = 7 * 24 * 60 * 60 * 1000;
 
     if ((now - lastBackupTimestamp) > sevenDaysInMillis) {
-      // Jika sudah lebih dari 7 hari, tampilkan dialog wajib backup
-      _showForcedBackupDialog();
+      // Pastikan context masih valid sebelum memanggil dialog
+      if (mounted) {
+        _showForcedBackupDialog();
+      }
     }
   }
 
@@ -58,10 +59,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
     showDialog(
       context: context,
-      // Mencegah dialog ditutup dengan menekan area luar
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
-        // Mencegah dialog ditutup dengan tombol "back" di Android
         return PopScope(
           canPop: false,
           child: AlertDialog(
@@ -73,24 +72,17 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 icon: const Icon(Icons.download),
                 label: const Text('Simpan Backup Sekarang'),
                 onPressed: () async {
-                  // Lakukan proses backup
                   final result = await backupHelper.createBackup();
                   
-                  // Cek apakah context masih valid sebelum digunakan
                   if (!dialogContext.mounted) return;
 
-                  // Tampilkan hasil backup
                   ScaffoldMessenger.of(dialogContext).showSnackBar(
                     SnackBar(content: Text(result)),
                   );
 
-                  // Jika backup berhasil (ada path yang dikembalikan oleh file_saver)
-                  if (!result.contains("Gagal")) {
-                    // Simpan timestamp baru
+                  if (!result.contains("Gagal") && !result.contains("dibatalkan")) {
                     final prefs = await SharedPreferences.getInstance();
                     await prefs.setInt('lastBackupTimestamp', DateTime.now().millisecondsSinceEpoch);
-                    
-                    // Tutup dialog
                     Navigator.of(dialogContext).pop();
                   }
                 },

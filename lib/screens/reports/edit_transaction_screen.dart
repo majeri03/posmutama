@@ -41,6 +41,8 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
         price: item.price,
         quantity: item.quantity,
         purchasePrice: item.purchasePrice,
+        unitName: item.unitName, // TAMBAHKAN INI
+        conversionRate: item.conversionRate, // TAMBAHKAN INI
       );
     }).toList();
     _selectedCustomer = widget.originalTransaction.customer;
@@ -69,9 +71,11 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
         _itemsInCart.add(TransactionItem(
           id: item.id,
           name: item.name,
-          price: item.price,
+          price: item.units.first.price, // Ambil dari satuan dasar
           quantity: 1,
-          purchasePrice: item.purchasePrice,
+          purchasePrice: item.units.first.purchasePrice, // Ambil dari satuan dasar
+          unitName: item.units.first.name, // TAMBAHKAN INI
+          conversionRate: item.units.first.conversionRate, // TAMBAHKAN INI
         ));
       }
     });

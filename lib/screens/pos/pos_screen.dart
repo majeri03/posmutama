@@ -331,16 +331,28 @@ class _POSScreenState extends ConsumerState<POSScreen> {
                       return ListTile(
                         title: Text('${cartItem.name} (${cartItem.unitName})'),
                         subtitle: Text(numberFormat.format(cartItem.price)),
+                        // Kode baru yang sudah diperbaiki
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
                               icon: const Icon(Icons.remove_circle_outline),
-                              onPressed: () => ref.read(cartProvider.notifier).decreaseQuantity(cartItem.id),
+                              // --- SOLUSI UNTUK TOMBOL KURANG ---
+                              onPressed: () {
+                                // Panggil setQuantity dengan kuantitas - 1
+                                ref.read(cartProvider.notifier).setQuantity(
+                                      cartItem.id,
+                                      cartItem.unitName,
+                                      cartItem.quantity - 1,
+                                    );
+                              },
                             ),
                             GestureDetector(
                               onTap: () {
-                                _showQuantityDialog(cartItem, originalItem.stock);
+                                // Logika dialog kuantitas. Pastikan `originalItem.stock` diganti menjadi
+                                // `originalItem.stockInBaseUnit` jika diperlukan untuk validasi di dialog
+                                final originalItem = allItems.firstWhere((item) => item.id == cartItem.id);
+                                _showQuantityDialog(cartItem, originalItem.stockInBaseUnit);
                               },
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -356,9 +368,27 @@ class _POSScreenState extends ConsumerState<POSScreen> {
                             ),
                             IconButton(
                               icon: const Icon(Icons.add_circle_outline),
+                              // --- SOLUSI UNTUK TOMBOL TAMBAH ---
                               onPressed: () {
-                                if (cartItem.quantity < originalItem.stock) {
-                                  ref.read(cartProvider.notifier).increaseQuantity(cartItem.id);
+                                // Ambil data item asli untuk cek stok total
+                                final originalItem = allItems.firstWhere((i) => i.id == cartItem.id);
+                                
+                                // Hitung total kuantitas item ini yang sudah ada di keranjang (dalam satuan dasar)
+                                int currentStockInCartBaseUnit = 0;
+                                for (final cartItemInLoop in cart) {
+                                  if (cartItemInLoop.id == cartItem.id) {
+                                    currentStockInCartBaseUnit += cartItemInLoop.quantity * cartItemInLoop.conversionRate;
+                                  }
+                                }
+
+                                // Cek apakah penambahan 1 unit lagi masih memungkinkan
+                                if ((currentStockInCartBaseUnit + cartItem.conversionRate) <= originalItem.stockInBaseUnit) {
+                                  // Panggil setQuantity dengan kuantitas + 1
+                                  ref.read(cartProvider.notifier).setQuantity(
+                                        cartItem.id,
+                                        cartItem.unitName,
+                                        cartItem.quantity + 1,
+                                      );
                                 } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(content: Text('Stok tidak mencukupi')),
@@ -413,9 +443,12 @@ class _POSScreenState extends ConsumerState<POSScreen> {
       appBar: AppBar(
         title: const Text('Kasir'),
         actions: [
+          // Kode baru yang sudah diperbaiki
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
             onPressed: () async {
+              // Pastikan context valid sebelum push
+              if (!context.mounted) return;
               final String? code = await Navigator.of(context).push<String>(
                 MaterialPageRoute(builder: (context) => const ScannerScreen()),
               );
@@ -424,23 +457,22 @@ class _POSScreenState extends ConsumerState<POSScreen> {
                 final item = ref.read(itemProvider.notifier).findItemByBarcode(code);
 
                 if (item != null) {
-                  ref.read(cartProvider.notifier).addItem(item);
-                  
-                  if(mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('${item.name} ditambahkan ke keranjang.'),
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
+                  // --- LOGIKA BARU UNTUK MENGATASI ERROR ---
+                  if (item.units.length > 1) {
+                    // Jika item punya banyak satuan, tampilkan dialog pemilihan
+                    _showUnitSelectionDialog(item);
+                  } else if (item.units.isNotEmpty) {
+                    // Jika item hanya punya satu satuan, langsung tambahkan
+                    ref.read(cartProvider.notifier).addItem(item, item.units.first);
                   }
+                  // Pesan sukses akan muncul dari provider atau setelah pemilihan unit
+                  // jadi kita bisa hapus snackbar di sini agar tidak duplikat.
                 } else {
-                   if(mounted) {
+                  if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Error: Barcode tidak ditemukan di database.'),
                         backgroundColor: Colors.red,
-                        duration: Duration(seconds: 3),
                       ),
                     );
                   }
