@@ -203,7 +203,7 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
               final originalTxItem = widget.originalTransaction.items.firstWhereOrNull((i) => i.id == item.id);
               final itemInCart = _itemsInCart.firstWhereOrNull((i) => i.id == item.id);
 
-              final initialStock = item.stock + (originalTxItem?.quantity ?? 0);
+              final initialStock = item.stockInBaseUnit + (originalTxItem != null ? (originalTxItem.quantity * originalTxItem.conversionRate) : 0);
               final displayedStock = initialStock - (itemInCart?.quantity ?? 0);
 
               return Card(

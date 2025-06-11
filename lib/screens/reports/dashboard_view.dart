@@ -1,9 +1,12 @@
+// KODE PENGGANTI LENGKAP DAN FINAL UNTUK dashboard_view.dart
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:pos_mutama/models/transaction.dart';
 import 'package:pos_mutama/providers/reports_filter_provider.dart';
+import 'package:collection/collection.dart';
 
 class DashboardView extends ConsumerWidget {
   const DashboardView({super.key});
@@ -131,12 +134,29 @@ class SalesChart extends ConsumerWidget {
 
     if (transactions.isEmpty) {
       return const SizedBox(
-        height: 200,
+        height: 250,
         child: Center(child: Text("Tidak ada data penjualan untuk ditampilkan.")),
       );
     }
     
-    final spots = _getChartData(transactions, filter);
+    // --- Logika untuk mendapatkan data spot ---
+    Map<int, double> salesData = {};
+    for (var tx in transactions) {
+      int key;
+      switch (filter) {
+        case DateFilter.today: key = tx.date.hour; break;
+        case DateFilter.thisWeek: key = tx.date.weekday; break;
+        case DateFilter.thisMonth: key = tx.date.day; break;
+        case DateFilter.thisYear: key = tx.date.month; break;
+        case DateFilter.all: key = tx.date.month; break;
+      }
+      salesData.update(key, (value) => value + tx.totalAmount, ifAbsent: () => tx.totalAmount.toDouble());
+    }
+    List<int> sortedKeys = salesData.keys.toList()..sort();
+    final spots = sortedKeys.mapIndexed((index, key) {
+      return FlSpot(index.toDouble(), salesData[key]!);
+    }).toList();
+    // --- Akhir logika data spot ---
 
     return SizedBox(
       height: 250,
@@ -152,7 +172,32 @@ class SalesChart extends ConsumerWidget {
                 showTitles: true,
                 reservedSize: 30,
                 interval: 1,
-                getTitlesWidget: (value, meta) => _bottomTitleWidgets(value, meta, filter, transactions),
+                // =======================================================
+                // ============= KUNCI PERBAIKAN FINAL ADA DI SINI =============
+                // =======================================================
+                getTitlesWidget: (value, meta) {
+                  const style = TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  );
+                  final int index = value.toInt();
+                  if (index >= sortedKeys.length) {
+                    return const Text('', style: style);
+                  }
+                  final key = sortedKeys[index];
+                  String text;
+                  switch (filter) {
+                    case DateFilter.today: text = '$key'; break;
+                    case DateFilter.thisWeek: text = ['Sn', 'Sl', 'Rb', 'Km', 'Jm', 'Sb', 'Mg'][key - 1]; break;
+                    case DateFilter.thisMonth: text = key.toString(); break;
+                    case DateFilter.thisYear:
+                    case DateFilter.all:
+                      text = DateFormat.MMM('id_ID').format(DateTime(0, key));
+                      break;
+                  }
+                  // KITA HANYA MENGEMBALIKAN WIDGET TEXT, BUKAN SideTitleWidget
+                  return Text(text, style: style);
+                },
               ),
             ),
           ),
@@ -177,79 +222,5 @@ class SalesChart extends ConsumerWidget {
         ),
       ),
     );
-  }
-  
-  List<FlSpot> _getChartData(List<Transaction> transactions, DateFilter filter) {
-    Map<int, double> salesData = {};
-
-    for (var tx in transactions) {
-      int key;
-      switch (filter) {
-        case DateFilter.today:
-          key = tx.date.hour; // Group by hour
-          break;
-        case DateFilter.thisWeek:
-          key = tx.date.weekday; // Group by day of week (1=Mon, 7=Sun)
-          break;
-        case DateFilter.thisMonth:
-          key = tx.date.day; // Group by day of month
-          break;
-        case DateFilter.thisYear:
-          key = tx.date.month; // Group by month
-          break;
-        case DateFilter.all:
-          key = tx.date.month; // Default to grouping by month for 'all'
-          break;
-      }
-      salesData.update(key, (value) => value + tx.totalAmount, ifAbsent: () => tx.totalAmount.toDouble());
-    }
-
-    if (salesData.isEmpty) return [const FlSpot(0,0)];
-
-    List<int> sortedKeys = salesData.keys.toList()..sort();
-    return sortedKeys.asMap().entries.map((entry) {
-      return FlSpot(entry.key.toDouble(), salesData[entry.value]!);
-    }).toList();
-  }
-
-  Widget _bottomTitleWidgets(double value, TitleMeta meta, DateFilter filter, List<Transaction> transactions) {
-    const style = TextStyle(fontWeight: FontWeight.bold, fontSize: 12);
-    String text;
-    final int index = value.toInt();
-
-     Map<int, double> salesData = {};
-     for (var tx in transactions) {
-      int key;
-      switch (filter) {
-        case DateFilter.today: key = tx.date.hour; break;
-        case DateFilter.thisWeek: key = tx.date.weekday; break;
-        case DateFilter.thisMonth: key = tx.date.day; break;
-        case DateFilter.thisYear: key = tx.date.month; break;
-        case DateFilter.all: key = tx.date.month; break;
-      }
-      salesData.update(key, (val) => val + tx.totalAmount, ifAbsent: () => tx.totalAmount.toDouble());
-    }
-    List<int> sortedKeys = salesData.keys.toList()..sort();
-
-    if(index >= sortedKeys.length) return const SizedBox.shrink();
-    
-    final key = sortedKeys[index];
-
-    switch (filter) {
-      case DateFilter.today:
-        text = '$key:00';
-        break;
-      case DateFilter.thisWeek:
-        text = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'][key - 1];
-        break;
-      case DateFilter.thisMonth:
-        text = key.toString();
-        break;
-      case DateFilter.thisYear:
-      case DateFilter.all:
-        text = DateFormat('MMM').format(DateTime(0, key));
-        break;
-    }
-    return SideTitleWidget(axisSide: meta.axisSide, child: Text(text, style: style));
   }
 }

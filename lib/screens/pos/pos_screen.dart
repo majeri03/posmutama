@@ -1,9 +1,12 @@
+// KODE LENGKAP PENGGANTI UNTUK pos_screen.dart
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:pos_mutama/models/customer.dart';
 import 'package:pos_mutama/models/item.dart';
+import 'package:pos_mutama/models/item_unit.dart'; // Import yang diperlukan
+import 'package:pos_mutama/models/transaction_item.dart';
 import 'package:pos_mutama/providers/cart_provider.dart';
 import 'package:pos_mutama/providers/customer_provider.dart';
 import 'package:pos_mutama/providers/item_provider.dart';
@@ -11,11 +14,7 @@ import 'package:pos_mutama/providers/transaction_provider.dart';
 import 'package:pos_mutama/screens/customers/add_edit_customer_screen.dart';
 import 'package:pos_mutama/screens/pos/receipt_screen.dart';
 import 'package:pos_mutama/screens/pos/scanner_screen.dart';
-import 'package:pos_mutama/models/transaction_item.dart';
-import 'package:collection/collection.dart';
-import 'package:pos_mutama/models/item_unit.dart';
-
-// Class POSScreen & _POSScreenState tidak ada perubahan
+import 'package:collection/collection.dart'; // Import yang diperlukan
 
 class POSScreen extends ConsumerStatefulWidget {
   const POSScreen({super.key});
@@ -43,7 +42,7 @@ class _POSScreenState extends ConsumerState<POSScreen> {
     _searchController.dispose();
     super.dispose();
   }
-
+  
   void _showPaymentDialog() {
     showDialog(
       context: context,
@@ -51,42 +50,24 @@ class _POSScreenState extends ConsumerState<POSScreen> {
     );
   }
 
-  // --- TAMBAHKAN METHOD DIALOG BARU DI SINI ---
-  void _showQuantityDialog(TransactionItem cartItem, int maxStock) {
-    final quantityController = TextEditingController(text: cartItem.quantity.toString());
-    final formKey = GlobalKey<FormState>();
-
+  void _showUnitSelectionDialog(Item item) {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Ubah Kuantitas ${cartItem.name}'),
-          content: Form(
-            key: formKey,
-            child: TextFormField(
-              controller: quantityController,
-              autofocus: true,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(
-                labelText: 'Jumlah',
-                hintText: 'Stok tersedia: $maxStock',
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Jumlah tidak boleh kosong';
-                }
-                final newQuantity = int.tryParse(value);
-                if (newQuantity == null) {
-                  return 'Masukkan angka yang valid';
-                }
-                if (newQuantity <= 0) {
-                  return 'Jumlah harus lebih dari 0';
-                }
-                if (newQuantity > maxStock) {
-                  return 'Jumlah melebihi stok (maks: $maxStock)';
-                }
-                return null;
+          title: Text('Pilih Satuan untuk ${item.name}'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: item.units.length,
+              itemBuilder: (context, index) {
+                final unit = item.units[index];
+                return ListTile(
+                  title: Text(unit.name),
+                  subtitle: Text('Harga: Rp ${unit.price}'),
+                  onTap: () => Navigator.of(context).pop(unit),
+                );
               },
             ),
           ),
@@ -94,12 +75,60 @@ class _POSScreenState extends ConsumerState<POSScreen> {
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Batal'),
+            )
+          ],
+        );
+      },
+    ).then((selectedUnit) {
+      if (selectedUnit != null && selectedUnit is ItemUnit) {
+        ref.read(cartProvider.notifier).addItem(item, selectedUnit);
+      }
+    });
+  }
+
+  void _showQuantityDialog(TransactionItem cartItem, int maxStockInBase) {
+    final quantityController = TextEditingController(text: cartItem.quantity.toString());
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Ubah Kuantitas ${cartItem.name} (${cartItem.unitName})'),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: quantityController,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Jumlah'),
+              validator: (value) {
+                if (value == null || value.isEmpty) return 'Jumlah tidak boleh kosong';
+                final newQuantity = int.tryParse(value);
+                if (newQuantity == null || newQuantity <= 0) return 'Jumlah harus lebih dari 0';
+
+                final cart = ref.read(cartProvider);
+                int currentStockInCartBaseUnit = 0;
+                for (final ci in cart) {
+                  if (ci.id == cartItem.id && ci.unitName != cartItem.unitName) {
+                    currentStockInCartBaseUnit += ci.quantity * ci.conversionRate;
+                  }
+                }
+                final availableStockForThisUnit = maxStockInBase - currentStockInCartBaseUnit;
+                if ((newQuantity * cartItem.conversionRate) > availableStockForThisUnit) {
+                  return 'Stok tidak cukup (Maks: ${availableStockForThisUnit ~/ cartItem.conversionRate})';
+                }
+                return null;
+              },
             ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Batal')),
             ElevatedButton(
               onPressed: () {
                 if (formKey.currentState!.validate()) {
                   final newQuantity = int.parse(quantityController.text);
-                  ref.read(cartProvider.notifier).setQuantity(cartItem.id, newQuantity);
+                  ref.read(cartProvider.notifier).setQuantity(cartItem.id, cartItem.unitName, newQuantity);
                   Navigator.of(context).pop();
                 }
               },
@@ -111,89 +140,34 @@ class _POSScreenState extends ConsumerState<POSScreen> {
     );
   }
 
-  void _showUnitSelectionDialog(Item item) {
-    showDialog(
-        context: context,
-        builder: (context) {
-            return AlertDialog(
-                title: Text('Pilih Satuan untuk ${item.name}'),
-                content: SizedBox(
-                    width: double.maxFinite,
-                    child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: item.units.length,
-                        itemBuilder: (context, index) {
-                            final unit = item.units[index];
-                            return ListTile(
-                                title: Text(unit.name),
-                                subtitle: Text('Harga: Rp ${unit.price}'),
-                                onTap: () {
-                                    // Kirim unit yang dipilih kembali dan tutup dialog
-                                    Navigator.of(context).pop(unit);
-                                },
-                            );
-                        },
-                    ),
-                ),
-                actions: [
-                  TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Batal'))
-                ],
-            );
-        },
-    ).then((selectedUnit) {
-        // Setelah dialog ditutup dan ada unit yang dipilih
-        if (selectedUnit != null && selectedUnit is ItemUnit) {
-            ref.read(cartProvider.notifier).addItem(item, selectedUnit);
-        }
-    });
-}
-
   Widget _buildWideLayout() {
     final allItems = ref.watch(itemProvider);
-     if (_searchedItems.isEmpty && _searchController.text.isEmpty) {
+    if (_searchedItems.isEmpty && _searchController.text.isEmpty) {
       _searchedItems = allItems;
     }
     return Row(
       children: [
-        Expanded(
-          flex: 2,
-          child: _buildItemGrid(allItems),
-        ),
-        Expanded(
-          flex: 1,
-          child: _buildCart(),
-        ),
+        Expanded(flex: 2, child: _buildItemGrid(allItems)),
+        Expanded(flex: 1, child: _buildCart()),
       ],
     );
   }
 
   Widget _buildNarrowLayout() {
-     final allItems = ref.watch(itemProvider);
-      if (_searchedItems.isEmpty && _searchController.text.isEmpty) {
+    final allItems = ref.watch(itemProvider);
+    if (_searchedItems.isEmpty && _searchController.text.isEmpty) {
       _searchedItems = allItems;
     }
     return Column(
       children: [
-        Expanded(
-          flex: 1,
-          child: _buildCart(),
-        ),
-        Expanded(
-          flex: 1,
-          child: _buildItemGrid(allItems),
-        ),
+        Expanded(flex: 1, child: _buildCart()),
+        Expanded(flex: 1, child: _buildItemGrid(allItems)),
       ],
     );
   }
-  
- // GANTI METHOD DI BAWAH INI
-  Widget _buildItemGrid(List<Item> allItems) {
-    // =======================================================================
-    // PERUBAHAN UNTUK STOK REAL-TIME (BAGIAN 2)
-    // =======================================================================
-    // 1. Pantau (watch) состояние keranjang di sini
-    final cart = ref.watch(cartProvider);
 
+  Widget _buildItemGrid(List<Item> allItems) {
+    final cart = ref.watch(cartProvider);
     return Column(
       children: [
         Padding(
@@ -203,9 +177,7 @@ class _POSScreenState extends ConsumerState<POSScreen> {
             decoration: InputDecoration(
               hintText: 'Cari item atau scan barcode...',
               prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
         ),
@@ -221,32 +193,32 @@ class _POSScreenState extends ConsumerState<POSScreen> {
             itemCount: _searchedItems.length,
             itemBuilder: (context, index) {
               final item = _searchedItems[index];
-              final TransactionItem? cartItem = cart.firstWhereOrNull((ci) => ci.id == item.id);
-              final displayedStock = item.stock - (cartItem?.quantity ?? 0);
+              int currentStockInCartBaseUnit = 0;
+              for (final cartItem in cart) {
+                if (cartItem.id == item.id) {
+                  currentStockInCartBaseUnit += cartItem.quantity * cartItem.conversionRate;
+                }
+              }
+              final displayedStock = item.stockInBaseUnit - currentStockInCartBaseUnit;
 
               return Card(
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
-                  // 4. Gunakan displayedStock untuk menentukan apakah item bisa diklik
                   onTap: displayedStock > 0
-                    ? () {
-                        if (item.units.length > 1) {
-                            // Jika satuan lebih dari 1, tampilkan dialog
+                      ? () {
+                          if (item.units.length > 1) {
                             _showUnitSelectionDialog(item);
-                        } else {
-                            // Jika hanya 1, langsung tambahkan
+                          } else if (item.units.isNotEmpty) {
                             ref.read(cartProvider.notifier).addItem(item, item.units.first);
+                          }
                         }
-                    }
-                    : null,
+                      : null,
                   child: GridTile(
                     footer: GridTileBar(
                       backgroundColor: Colors.black45,
                       title: Text(item.name, overflow: TextOverflow.ellipsis),
-                      // 5. Tampilkan displayedStock di subtitle
-                      subtitle: Text('Stok: $displayedStock'),
+                      subtitle: Text('Stok: $displayedStock ${item.units.first.name}'),
                     ),
-                    // 6. Gunakan displayedStock untuk menampilkan overlay "Stok Habis"
                     child: displayedStock <= 0
                         ? Container(
                             color: Colors.black54,
@@ -264,8 +236,6 @@ class _POSScreenState extends ConsumerState<POSScreen> {
     );
   }
 
-  
-  // GANTI METHOD DI BAWAH INI
   Widget _buildCart() {
     final cart = ref.watch(cartProvider);
     final totalAmount = ref.watch(cartProvider.notifier).totalAmount;
@@ -282,10 +252,6 @@ class _POSScreenState extends ConsumerState<POSScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Keranjang', style: Theme.of(context).textTheme.headlineSmall),
-                // ========================================================
-                // PERUBAHAN UNTUK TOMBOL RESET (BAGIAN 1)
-                // ========================================================
-                // Tampilkan tombol hanya jika keranjang tidak kosong
                 if (cart.isNotEmpty)
                   IconButton(
                     icon: const Icon(Icons.delete_sweep_outlined),
@@ -298,10 +264,7 @@ class _POSScreenState extends ConsumerState<POSScreen> {
                           title: const Text('Konfirmasi'),
                           content: const Text('Anda yakin ingin mengosongkan keranjang?'),
                           actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(ctx).pop(),
-                              child: const Text('Batal'),
-                            ),
+                            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Batal')),
                             TextButton(
                               style: TextButton.styleFrom(foregroundColor: Colors.red),
                               onPressed: () {
@@ -325,22 +288,15 @@ class _POSScreenState extends ConsumerState<POSScreen> {
                     itemCount: cart.length,
                     itemBuilder: (context, index) {
                       final cartItem = cart[index];
-                      // Ambil stok asli dari 'allItems' untuk validasi
-                      final originalItem = allItems.firstWhere((item) => item.id == cartItem.id,
-                          orElse: () => Item(id: '', name: '', price: 0, stock: 0, purchasePrice: 0));
-
                       return ListTile(
                         title: Text('${cartItem.name} (${cartItem.unitName})'),
                         subtitle: Text(numberFormat.format(cartItem.price)),
-                        // Kode baru yang sudah diperbaiki
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
                               icon: const Icon(Icons.remove_circle_outline),
-                              // --- SOLUSI UNTUK TOMBOL KURANG ---
                               onPressed: () {
-                                // Panggil setQuantity dengan kuantitas - 1
                                 ref.read(cartProvider.notifier).setQuantity(
                                       cartItem.id,
                                       cartItem.unitName,
@@ -350,8 +306,6 @@ class _POSScreenState extends ConsumerState<POSScreen> {
                             ),
                             GestureDetector(
                               onTap: () {
-                                // Logika dialog kuantitas. Pastikan `originalItem.stock` diganti menjadi
-                                // `originalItem.stockInBaseUnit` jika diperlukan untuk validasi di dialog
                                 final originalItem = allItems.firstWhere((item) => item.id == cartItem.id);
                                 _showQuantityDialog(cartItem, originalItem.stockInBaseUnit);
                               },
@@ -369,22 +323,15 @@ class _POSScreenState extends ConsumerState<POSScreen> {
                             ),
                             IconButton(
                               icon: const Icon(Icons.add_circle_outline),
-                              // --- SOLUSI UNTUK TOMBOL TAMBAH ---
                               onPressed: () {
-                                // Ambil data item asli untuk cek stok total
                                 final originalItem = allItems.firstWhere((i) => i.id == cartItem.id);
-                                
-                                // Hitung total kuantitas item ini yang sudah ada di keranjang (dalam satuan dasar)
                                 int currentStockInCartBaseUnit = 0;
-                                for (final cartItemInLoop in cart) {
-                                  if (cartItemInLoop.id == cartItem.id) {
-                                    currentStockInCartBaseUnit += cartItemInLoop.quantity * cartItemInLoop.conversionRate;
+                                for (final ci in cart) {
+                                  if (ci.id == cartItem.id) {
+                                    currentStockInCartBaseUnit += ci.quantity * ci.conversionRate;
                                   }
                                 }
-
-                                // Cek apakah penambahan 1 unit lagi masih memungkinkan
                                 if ((currentStockInCartBaseUnit + cartItem.conversionRate) <= originalItem.stockInBaseUnit) {
-                                  // Panggil setQuantity dengan kuantitas + 1
                                   ref.read(cartProvider.notifier).setQuantity(
                                         cartItem.id,
                                         cartItem.unitName,
@@ -437,37 +384,27 @@ class _POSScreenState extends ConsumerState<POSScreen> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kasir'),
         actions: [
-          // Kode baru yang sudah diperbaiki
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
             onPressed: () async {
-              // Pastikan context valid sebelum push
               if (!context.mounted) return;
               final String? code = await Navigator.of(context).push<String>(
                 MaterialPageRoute(builder: (context) => const ScannerScreen()),
               );
-
               if (code != null && code.isNotEmpty) {
                 final item = ref.read(itemProvider.notifier).findItemByBarcode(code);
-
                 if (item != null) {
-                  // --- LOGIKA BARU UNTUK MENGATASI ERROR ---
                   if (item.units.length > 1) {
-                    // Jika item punya banyak satuan, tampilkan dialog pemilihan
                     _showUnitSelectionDialog(item);
                   } else if (item.units.isNotEmpty) {
-                    // Jika item hanya punya satu satuan, langsung tambahkan
                     ref.read(cartProvider.notifier).addItem(item, item.units.first);
                   }
-                  // Pesan sukses akan muncul dari provider atau setelah pemilihan unit
-                  // jadi kita bisa hapus snackbar di sini agar tidak duplikat.
                 } else {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -516,7 +453,7 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
     _paidAmountController.dispose();
     super.dispose();
   }
-  
+
   void _calculateChange() {
     final totalAmount = ref.read(cartProvider.notifier).totalAmount;
     final paidAmount = int.tryParse(_paidAmountController.text) ?? 0;
@@ -529,25 +466,25 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
     if (_formKey.currentState!.validate()) {
       final cart = ref.read(cartProvider);
       final totalAmount = ref.read(cartProvider.notifier).totalAmount;
-      final paidAmount = int.tryParse(_paidAmountController.text.isNotEmpty ? _paidAmountController.text : "0") ?? 0;
-      
+      final paidAmount =
+          int.tryParse(_paidAmountController.text.isNotEmpty ? _paidAmountController.text : "0") ?? 0;
+
       final changeAmount = (paidAmount >= totalAmount) ? paidAmount - totalAmount : 0;
 
       final newTransaction = await ref.read(transactionProvider.notifier).addTransaction(
-        items: cart,
-        totalAmount: totalAmount,
-        customer: _selectedCustomer,
-        paidAmount: paidAmount,
-        changeAmount: changeAmount,
-        paymentMethod: (paidAmount > 0) ? _paymentMethod : 'N/A',
-      );
+            items: cart,
+            totalAmount: totalAmount,
+            customer: _selectedCustomer,
+            paidAmount: paidAmount,
+            changeAmount: changeAmount,
+            paymentMethod: (paidAmount > 0) ? _paymentMethod : 'N/A',
+          );
 
-      
       ref.read(cartProvider.notifier).clearCart();
-      
+
       if (!mounted) return;
       Navigator.of(context).pop(); // Close dialog
-      
+
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (context) => ReceiptScreen(transaction: newTransaction),
@@ -572,85 +509,82 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                 Text(numberFormat.format(totalAmount), style: Theme.of(context).textTheme.headlineMedium),
-                 const SizedBox(height: 16),
-                 Row(
-                   crossAxisAlignment: CrossAxisAlignment.end,
-                   children: [
-                     Expanded(
-                       child: DropdownButtonFormField<Customer?>(
-                          value: _selectedCustomer,
-                          decoration: const InputDecoration(labelText: 'Pelanggan (Opsional)'),
-                          items: [
-                            const DropdownMenuItem<Customer?>(
-                              value: null,
-                              child: Text('Pelanggan Umum'),
-                            ),
-                            ...customers.map((customer) => DropdownMenuItem(
-                                  value: customer,
-                                  child: Text(customer.name),
-                                )),
-                          ],
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedCustomer = value;
-                            });
-                          },
-                        ),
-                     ),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle_outline),
-                        onPressed: () async {
-                          final newCustomer = await Navigator.of(context).push<Customer>(
-                            MaterialPageRoute(builder: (context) => const AddEditCustomerScreen()),
-                          );
-                          if (newCustomer != null) {
-                            setState(() {
-                              _selectedCustomer = newCustomer;
-                            });
-                          }
+                Text(numberFormat.format(totalAmount), style: Theme.of(context).textTheme.headlineMedium),
+                const SizedBox(height: 16),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<Customer?>(
+                        value: _selectedCustomer,
+                        decoration: const InputDecoration(labelText: 'Pelanggan (Opsional)'),
+                        items: [
+                          const DropdownMenuItem<Customer?>(
+                            value: null,
+                            child: Text('Pelanggan Umum'),
+                          ),
+                          ...customers.map((customer) => DropdownMenuItem(
+                                value: customer,
+                                child: Text(customer.name),
+                              )),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedCustomer = value;
+                          });
                         },
                       ),
-                   ],
-                 ),
-                 const SizedBox(height: 16),
-                 TextFormField(
-                    controller: _paidAmountController,
-                    decoration: const InputDecoration(labelText: 'Jumlah Bayar (Isi 0 jika utang)'),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    onChanged: (_) => _calculateChange(),
-                    validator: (value){
-                      if(value == null || value.isEmpty){
-                        // Boleh kosong, akan dianggap 0
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                 DropdownButtonFormField<String>(
-                    value: _paymentMethod,
-                    decoration: const InputDecoration(labelText: 'Metode Pembayaran'),
-                    items: ['Tunai', 'Transfer', 'QRIS']
-                        .map((method) => DropdownMenuItem(
-                              value: method,
-                              child: Text(method),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _paymentMethod = value!;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                       const Text('Kembalian:'),
-                       Text(numberFormat.format(_changeAmount < 0 ? 0 : _changeAmount), style: const TextStyle(fontWeight: FontWeight.bold)),
-                    ],
-                  ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline),
+                      onPressed: () async {
+                        final newCustomer = await Navigator.of(context).push<Customer>(
+                          MaterialPageRoute(builder: (context) => const AddEditCustomerScreen()),
+                        );
+                        if (newCustomer != null) {
+                          setState(() {
+                            _selectedCustomer = newCustomer;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _paidAmountController,
+                  decoration: const InputDecoration(labelText: 'Jumlah Bayar (Isi 0 jika utang)'),
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => _calculateChange(),
+                  validator: (value) {
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: _paymentMethod,
+                  decoration: const InputDecoration(labelText: 'Metode Pembayaran'),
+                  items: ['Tunai', 'Transfer', 'QRIS']
+                      .map((method) => DropdownMenuItem(
+                            value: method,
+                            child: Text(method),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _paymentMethod = value!;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Kembalian:'),
+                    Text(numberFormat.format(_changeAmount < 0 ? 0 : _changeAmount),
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
               ],
             ),
           ),
