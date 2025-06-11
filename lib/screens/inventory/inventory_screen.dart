@@ -188,7 +188,6 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                         child: ListTile(
                           title: Text(item.name),
                           subtitle: Text('Stok Dasar: ${item.stockInBaseUnit} ${item.units.first.name} | Barcode: ${item.barcode ?? '-'}'),
-                          // Tampilkan harga jual dari satuan dasar (unit pertama)
                           trailing: Text(numberFormat.format(item.units.first.price)),
                           onTap: () {
                             showDialog(
@@ -199,10 +198,13 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Stok: ${item.stock}'),
-                                    Text('Harga Jual: ${numberFormat.format(item.price)}'),
-                                    Text('Harga Beli: ${numberFormat.format(item.purchasePrice)}'),
+                                    Text('Stok Satuan Dasar: ${item.stockInBaseUnit}'),
+                                    Text('Harga Jual (Dasar): ${numberFormat.format(item.units.first.price)}'),
+                                    Text('Harga Beli (Dasar): ${numberFormat.format(item.units.first.purchasePrice)}'),
                                     Text('Barcode: ${item.barcode ?? '-'}'),
+                                    const Divider(),
+                                    const Text('Satuan Lain:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    ...item.units.map((unit) => Text('- ${unit.name} (1 = ${unit.conversionRate} unit dasar)')),
                                   ],
                                 ),
                                 actions: [
@@ -214,18 +216,20 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                                     child: const Text('Edit'),
                                     onPressed: () {
                                       Navigator.of(ctx).pop();
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (context) => AddEditItemScreen(item: item),
-                                        ),
-                                      );
+                                      if (context.mounted) {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (context) => AddEditItemScreen(item: item),
+                                          ),
+                                        );
+                                      }
                                     },
                                   ),
                                 ],
                               ),
                             );
                           },
-                        ),
+                        )
                       );
                     },
                   ),

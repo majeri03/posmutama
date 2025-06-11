@@ -1,10 +1,9 @@
+// KODE LENGKAP DAN SUDAH DIPERBAIKI
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pos_mutama/models/item.dart';
-import 'package:pos_mutama/providers/item_provider.dart';
-import 'package:pos_mutama/screens/pos/scanner_screen.dart';
 import 'package:pos_mutama/models/item_unit.dart';
+import 'package:pos_mutama/providers/item_provider.dart';
 
 class AddEditItemScreen extends ConsumerStatefulWidget {
   final Item? item;
@@ -21,9 +20,31 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   late TextEditingController _stockController;
   late TextEditingController _barcodeController;
 
-  List<Map<String, TextEditingController>> _unitControllers = [];
+  final List<Map<String, TextEditingController>> _unitControllers = [];
 
-  // PINDAHKAN METHOD KE SINI, MENJADI METHOD CLASS
+  @override
+  void initState() {
+    super.initState();
+    final item = widget.item;
+    _nameController = TextEditingController(text: item?.name ?? '');
+    _barcodeController = TextEditingController(text: item?.barcode ?? '');
+
+    if (item != null) {
+      _stockController = TextEditingController(text: item.stockInBaseUnit.toString());
+      for (var unit in item.units) {
+        _addUnitController(
+          name: unit.name,
+          purchasePrice: unit.purchasePrice.toString(),
+          price: unit.price.toString(),
+          conversionRate: unit.conversionRate.toString(),
+        );
+      }
+    } else {
+      _stockController = TextEditingController();
+      _addUnitController(); // Mulai dengan satu unit dasar
+    }
+  }
+
   void _addUnitController({String? name, String? purchasePrice, String? price, String? conversionRate}) {
     setState(() {
       _unitControllers.add({
@@ -35,57 +56,21 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     });
   }
 
-  // PINDAHKAN METHOD KE SINI, MENJADI METHOD CLASS
   void _removeUnitController(int index) {
     setState(() {
-      // dispose controllers sebelum dihapus
-      _unitControllers[index].values.forEach((controller) => controller.dispose());
+      for (var controller in _unitControllers[index].values) {
+        controller.dispose();
+      }
       _unitControllers.removeAt(index);
     });
   }
-
-  @override
-  void initState() {
-    super.initState();
-    final item = widget.item;
-    _nameController = TextEditingController(text: widget.item?.name ?? '');
-    _barcodeController = TextEditingController(text: widget.item?.barcode ?? '');
-    if (item != null) {
-      // Jika edit, populate controllers dari data item
-      _stockController = TextEditingController(text: item.stockInBaseUnit.toString());
-      for (var unit in item.units) {
-        _addUnitController(
-          name: unit.name,
-          purchasePrice: unit.purchasePrice.toString(),
-          price: unit.price.toString(),
-          conversionRate: unit.conversionRate.toString(),
-        );
-      }
-    } else {
-      // Jika item baru, mulai dengan satu satuan dasar
-      _stockController = TextEditingController();
-      _addUnitController();
-    }
-
-    
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _stockController.dispose();
-    _barcodeController.dispose();
-    _unitControllers.forEach((map) => map.values.forEach((controller) => controller.dispose()));
-    super.dispose();
-  }
-
-  // --- LOGIKA HARGA CERDAS ---
+  
   void _suggestPriceMarkup() {
-    // Pastikan ada harga modal di satuan dasar
-    final basePurchasePriceText = _unitControllers.first['purchasePrice']?.text;
-    if (basePurchasePriceText == null || basePurchasePriceText.isEmpty) {
+    if (_unitControllers.isEmpty || _unitControllers.first['purchasePrice']!.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Isi Harga Beli Satuan Dasar terlebih dahulu.")));
       return;
     }
-    final basePurchasePrice = double.parse(basePurchasePriceText);
+    final basePurchasePrice = double.parse(_unitControllers.first['purchasePrice']!.text);
 
     showDialog(
       context: context,
@@ -104,10 +89,10 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
               onPressed: () {
                 final markup = double.tryParse(markupController.text) ?? 0;
                 setState(() {
-                  for (var i = 0; i < _unitControllers.length; i++) {
-                    final conversionRate = int.tryParse(_unitControllers[i]['conversionRate']!.text) ?? 1;
+                  for (var unitController in _unitControllers) {
+                    final conversionRate = int.tryParse(unitController['conversionRate']!.text) ?? 1;
                     final calculatedPrice = (basePurchasePrice * conversionRate) * (1 + (markup / 100));
-                    _unitControllers[i]['price']!.text = calculatedPrice.round().toString();
+                    unitController['price']!.text = calculatedPrice.round().toString();
                   }
                 });
                 Navigator.pop(context);
@@ -121,46 +106,40 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   }
 
   void _suggestPriceDivision() {
-    // Cari satuan dengan konversi terbesar
     if (_unitControllers.length < 2) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Fitur ini memerlukan minimal 2 satuan.")));
-        return;
-    }
-    
-    int largestUnitIndex = 0;
-    int maxConversion = 0;
-    for(int i = 0; i < _unitControllers.length; i++) {
-        final rate = int.tryParse(_unitControllers[i]['conversionRate']!.text) ?? 0;
-        if(rate > maxConversion) {
-            maxConversion = rate;
-            largestUnitIndex = i;
-        }
-    }
-    
-    final largestUnitPriceText = _unitControllers[largestUnitIndex]['price']?.text;
-    if (largestUnitPriceText == null || largestUnitPriceText.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Isi Harga Jual satuan terbesar (${_unitControllers[largestUnitIndex]['name']!.text}) terlebih dahulu.")));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Fitur ini memerlukan minimal 2 satuan.")));
       return;
     }
-    
-    final largestUnitPrice = int.parse(largestUnitPriceText);
+    int largestUnitIndex = -1;
+    int maxConversion = 0;
+    for (int i = 0; i < _unitControllers.length; i++) {
+      final rate = int.tryParse(_unitControllers[i]['conversionRate']!.text) ?? 0;
+      if (rate > maxConversion) {
+        maxConversion = rate;
+        largestUnitIndex = i;
+      }
+    }
+    if (largestUnitIndex == -1 || _unitControllers[largestUnitIndex]['price']!.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Isi Harga Jual satuan terbesar terlebih dahulu.")));
+      return;
+    }
+    final largestUnitPrice = int.parse(_unitControllers[largestUnitIndex]['price']!.text);
+    if (maxConversion == 0) return;
     final pricePerBaseUnit = largestUnitPrice / maxConversion;
-
     setState(() {
-      for (var i = 0; i < _unitControllers.length; i++) {
-        final conversionRate = int.tryParse(_unitControllers[i]['conversionRate']!.text) ?? 1;
+      for (var unitController in _unitControllers) {
+        final conversionRate = int.tryParse(unitController['conversionRate']!.text) ?? 1;
         final calculatedPrice = pricePerBaseUnit * conversionRate;
-        _unitControllers[i]['price']!.text = calculatedPrice.round().toString();
+        unitController['price']!.text = calculatedPrice.round().toString();
       }
     });
   }
-
+  
   void _saveItem() {
     if (_formKey.currentState!.validate()) {
       final name = _nameController.text;
       final stockInBaseUnit = int.tryParse(_stockController.text) ?? 0;
       final barcode = _barcodeController.text.isNotEmpty ? _barcodeController.text : null;
-
       final List<ItemUnit> units = _unitControllers.map((controllers) {
         return ItemUnit(
           name: controllers['name']!.text,
@@ -169,7 +148,6 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
           conversionRate: int.parse(controllers['conversionRate']!.text),
         );
       }).toList();
-
       if (widget.item == null) {
         ref.read(itemProvider.notifier).addItem(name, stockInBaseUnit, barcode, units);
       } else {
@@ -179,6 +157,20 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _stockController.dispose();
+    _barcodeController.dispose();
+    for (var map in _unitControllers) {
+      for (var controller in map.values) {
+        controller.dispose();
+      }
+    }
+    super.dispose();
+  }
+
+  // METHOD BUILD YANG HILANG SEKARANG SUDAH ADA
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -202,7 +194,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                 controller: _stockController,
                 decoration: const InputDecoration(labelText: 'Stok (dalam satuan terkecil)'),
                 keyboardType: TextInputType.number,
-                 validator: (value) => (value?.isEmpty ?? true) ? 'Wajib diisi' : null,
+                validator: (value) => (value?.isEmpty ?? true) ? 'Wajib diisi' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -218,10 +210,8 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                 ],
               ),
               const Divider(height: 32),
-              
               Text("Daftar Satuan", style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 8),
-
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -248,19 +238,19 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                           TextFormField(
                             controller: _unitControllers[index]['name'],
                             decoration: const InputDecoration(labelText: 'Nama Satuan (e.g. Pcs)'),
-                             validator: (value) => (value?.isEmpty ?? true) ? 'Wajib diisi' : null,
+                            validator: (value) => (value?.isEmpty ?? true) ? 'Wajib diisi' : null,
                           ),
                           TextFormField(
                             controller: _unitControllers[index]['purchasePrice'],
                             decoration: const InputDecoration(labelText: 'Harga Beli (Modal)'),
                             keyboardType: TextInputType.number,
-                             validator: (value) => (value?.isEmpty ?? true) ? 'Wajib diisi' : null,
+                            validator: (value) => (value?.isEmpty ?? true) ? 'Wajib diisi' : null,
                           ),
                           TextFormField(
                             controller: _unitControllers[index]['price'],
                             decoration: const InputDecoration(labelText: 'Harga Jual'),
                             keyboardType: TextInputType.number,
-                             validator: (value) => (value?.isEmpty ?? true) ? 'Wajib diisi' : null,
+                            validator: (value) => (value?.isEmpty ?? true) ? 'Wajib diisi' : null,
                           ),
                           TextFormField(
                             controller: _unitControllers[index]['conversionRate'],
@@ -269,7 +259,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                               enabled: !isBaseUnit,
                             ),
                             keyboardType: TextInputType.number,
-                             validator: (value) => (value?.isEmpty ?? true) ? 'Wajib diisi' : null,
+                            validator: (value) => (value?.isEmpty ?? true) ? 'Wajib diisi' : null,
                           ),
                         ],
                       ),

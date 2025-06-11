@@ -9,6 +9,7 @@ import 'package:pos_mutama/models/item.dart';
 import 'package:pos_mutama/models/transaction.dart';
 import 'package:pos_mutama/providers/item_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:pos_mutama/models/item_unit.dart';
 
 Future<String> exportItemsToCsv(List<Item> items) async {
   List<List<dynamic>> rows = [];
@@ -143,9 +144,6 @@ Future<String> importItemsFromCsv(WidgetRef ref) async {
         await itemNotifier.addImportedItem(newItem);
         itemsAdded++;
       }
-
-      // Perbarui state setelah semua item ditambahkan
-      itemNotifier.state = ref.read(itemProvider.notifier).state.toList();
 
       return 'Import selesai: $itemsAdded item baru ditambahkan, $itemsSkipped item dilewati karena ID sudah ada.';
     } catch (e) {
