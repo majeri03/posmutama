@@ -29,11 +29,18 @@ class TransactionNotifier extends StateNotifier<List<Transaction>> {
     required List<TransactionItem> items,
     required int totalAmount,
     Customer? customer,
-    required int paidAmount,
+    required int paidAmount, // Tetap terima 'paidAmount' dari UI
     required int changeAmount,
     required String paymentMethod,
   }) async {
     String status;
+    List<PaymentRecord> initialPaymentHistory = [];
+
+    // Jika ada pembayaran awal (lunas atau DP), catat sebagai riwayat pertama
+    if (paidAmount > 0) {
+      initialPaymentHistory.add(PaymentRecord(date: DateTime.now(), amount: paidAmount));
+    }
+
     if (paidAmount >= totalAmount) {
       status = 'Lunas';
     } else if (paidAmount > 0) {
@@ -49,16 +56,13 @@ class TransactionNotifier extends StateNotifier<List<Transaction>> {
       totalAmount: totalAmount,
       customer: customer,
       status: status,
-      paidAmount: paidAmount,
       changeAmount: changeAmount,
       paymentMethod: paymentMethod,
+      paymentHistory: initialPaymentHistory, // Simpan riwayat awal
     );
 
-    // TAMBAHKAN LOOP BARU DI SINI
-    // Loop ini akan mengurangi stok berdasarkan satuan dasar
     for (var cartItem in items) {
-      // Hitung total stok dasar yang harus dikurangi
-      final stockToReduce = cartItem.quantity * cartItem.conversionRate; 
+      final stockToReduce = cartItem.quantity * cartItem.conversionRate;
       _ref.read(itemProvider.notifier).adjustStock(cartItem.id, -stockToReduce);
     }
 
@@ -70,15 +74,17 @@ class TransactionNotifier extends StateNotifier<List<Transaction>> {
   Future<void> recordDebtPayment(String transactionId, int amountToPay) async {
     final transaction = _box.get(transactionId);
     if (transaction != null && transaction.status != 'Lunas') {
-      transaction.paidAmount += amountToPay;
+      // Tambahkan pembayaran baru ke riwayat
+      transaction.paymentHistory.add(PaymentRecord(date: DateTime.now(), amount: amountToPay));
 
+      // Status dan kembalian diperbarui berdasarkan total riwayat
       if (transaction.paidAmount >= transaction.totalAmount) {
         transaction.status = 'Lunas';
         transaction.changeAmount = transaction.paidAmount - transaction.totalAmount;
       } else {
         transaction.status = 'DP';
       }
-      
+
       await transaction.save();
       state = _box.values.toList()..sort((a, b) => b.date.compareTo(a.date));
     }

@@ -10,6 +10,7 @@ import 'package:pos_mutama/models/transaction.dart';
 import 'package:pos_mutama/providers/item_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:pos_mutama/models/item_unit.dart';
+import 'package:intl/intl.dart';
 
 Future<String> exportItemsToCsv(List<Item> items) async {
   List<List<dynamic>> rows = [];
@@ -44,9 +45,13 @@ Future<String> exportItemsToCsv(List<Item> items) async {
   }
 
   String csv = const ListToCsvConverter().convert(rows);
+  final String timestamp = DateFormat('yyyy-MM-dd').format(DateTime.now());
+  
+  final String fileName = 'items_export_mutama_$timestamp.csv';
+
   return await _saveFileToCustomLocation(
-    data: utf8.encode(csv), // Kirim data dalam format Uint8List
-    fileName: 'items_export_mutama.csv',
+    data: utf8.encode(csv),
+    fileName: fileName,
   );
 }
 
@@ -62,9 +67,14 @@ Future<String> exportTransactionsToCsv(List<Transaction> transactions) async {
   }
 
   String csv = const ListToCsvConverter().convert(rows);
+  
+  final String timestamp = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+  final String fileName = 'transactions_export_mutama_$timestamp.csv';
+
   return await _saveFileToCustomLocation(
     data: utf8.encode(csv),
-    fileName: 'transactions_export_mutama.csv',
+    fileName: fileName,
   );
 }
 

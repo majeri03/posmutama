@@ -288,9 +288,22 @@ class _POSScreenState extends ConsumerState<POSScreen> {
                     itemCount: cart.length,
                     itemBuilder: (context, index) {
                       final cartItem = cart[index];
+                      final subtotal = cartItem.price * cartItem.quantity;
                       return ListTile(
                         title: Text('${cartItem.name} (${cartItem.unitName})'),
-                        subtitle: Text(numberFormat.format(cartItem.price)),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${cartItem.quantity} x ${numberFormat.format(cartItem.price)}',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                            ),
+                            Text(
+                              'Subtotal: ${numberFormat.format(subtotal)}',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [

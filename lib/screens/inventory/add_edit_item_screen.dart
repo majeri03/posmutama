@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pos_mutama/models/item.dart';
 import 'package:pos_mutama/models/item_unit.dart';
 import 'package:pos_mutama/providers/item_provider.dart';
+import 'package:pos_mutama/screens/pos/scanner_screen.dart';
 
 class AddEditItemScreen extends ConsumerStatefulWidget {
   final Item? item;
@@ -65,12 +66,14 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     });
   }
   
+  // GANTI SELURUH FUNGSI LAMA DENGAN YANG INI
   void _suggestPriceMarkup() {
     if (_unitControllers.isEmpty || _unitControllers.first['purchasePrice']!.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Isi Harga Beli Satuan Dasar terlebih dahulu.")));
       return;
     }
-    final basePurchasePrice = double.parse(_unitControllers.first['purchasePrice']!.text);
+    final basePurchasePrice = double.tryParse(_unitControllers.first['purchasePrice']!.text) ?? 0.0;
+    if (basePurchasePrice == 0) return;
 
     showDialog(
       context: context,
@@ -81,7 +84,8 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
           content: TextField(
             controller: markupController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: 'Persentase Markup'),
+            decoration: const InputDecoration(labelText: 'Persentase Markup', hintText: 'Contoh: 20'),
+            autofocus: true,
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
@@ -91,8 +95,14 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                 setState(() {
                   for (var unitController in _unitControllers) {
                     final conversionRate = int.tryParse(unitController['conversionRate']!.text) ?? 1;
-                    final calculatedPrice = (basePurchasePrice * conversionRate) * (1 + (markup / 100));
-                    unitController['price']!.text = calculatedPrice.round().toString();
+
+                    // LOGIKA BARU: Hitung dan isi Harga Beli (Modal)
+                    final calculatedPurchasePrice = basePurchasePrice * conversionRate;
+                    unitController['purchasePrice']!.text = calculatedPurchasePrice.toStringAsFixed(0); // Dibulatkan tanpa desimal
+
+                    // LOGIKA LAMA (disempurnakan): Hitung dan isi Harga Jual
+                    final calculatedSellPrice = calculatedPurchasePrice * (1 + (markup / 100));
+                    unitController['price']!.text = calculatedSellPrice.round().toString();
                   }
                 });
                 Navigator.pop(context);
@@ -106,33 +116,53 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   }
 
   void _suggestPriceDivision() {
-    if (_unitControllers.length < 2) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Fitur ini memerlukan minimal 2 satuan.")));
-      return;
+  if (_unitControllers.length < 2) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Fitur ini memerlukan minimal 2 satuan.")));
+    return;
+  }
+  int largestUnitIndex = -1;
+  int maxConversion = 0;
+  for (int i = 0; i < _unitControllers.length; i++) {
+    final rate = int.tryParse(_unitControllers[i]['conversionRate']!.text) ?? 0;
+    if (rate > maxConversion) {
+      maxConversion = rate;
+      largestUnitIndex = i;
     }
-    int largestUnitIndex = -1;
-    int maxConversion = 0;
-    for (int i = 0; i < _unitControllers.length; i++) {
-      final rate = int.tryParse(_unitControllers[i]['conversionRate']!.text) ?? 0;
-      if (rate > maxConversion) {
-        maxConversion = rate;
-        largestUnitIndex = i;
-      }
+  }
+
+  final largestUnitPurchasePriceCtrl = _unitControllers[largestUnitIndex]['purchasePrice']!;
+  final largestUnitSellPriceCtrl = _unitControllers[largestUnitIndex]['price']!;
+
+  if (largestUnitPurchasePriceCtrl.text.isEmpty || largestUnitSellPriceCtrl.text.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Isi Harga Beli & Jual untuk satuan terbesar terlebih dahulu.")));
+    return;
+  }
+
+  final largestUnitPurchasePrice = double.tryParse(largestUnitPurchasePriceCtrl.text) ?? 0.0;
+  final largestUnitSellPrice = int.tryParse(largestUnitSellPriceCtrl.text) ?? 0;
+  
+  if (maxConversion == 0 || largestUnitPurchasePrice == 0 || largestUnitSellPrice == 0) return;
+
+  final purchasePricePerBaseUnit = largestUnitPurchasePrice / maxConversion;
+  final sellPricePerBaseUnit = largestUnitSellPrice / maxConversion;
+
+  setState(() {
+    for (var unitController in _unitControllers) {
+      final conversionRate = int.tryParse(unitController['conversionRate']!.text) ?? 1;
+      
+      // LOGIKA BARU: Hitung Harga Beli
+      final calculatedPurchasePrice = purchasePricePerBaseUnit * conversionRate;
+      unitController['purchasePrice']!.text = calculatedPurchasePrice.toStringAsFixed(0);
+      
+      // LOGIKA LAMA (disempurnakan): Hitung Harga Jual
+      final calculatedSellPrice = sellPricePerBaseUnit * conversionRate;
+      unitController['price']!.text = calculatedSellPrice.round().toString();
     }
-    if (largestUnitIndex == -1 || _unitControllers[largestUnitIndex]['price']!.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Isi Harga Jual satuan terbesar terlebih dahulu.")));
-      return;
-    }
-    final largestUnitPrice = int.parse(_unitControllers[largestUnitIndex]['price']!.text);
-    if (maxConversion == 0) return;
-    final pricePerBaseUnit = largestUnitPrice / maxConversion;
-    setState(() {
-      for (var unitController in _unitControllers) {
-        final conversionRate = int.tryParse(unitController['conversionRate']!.text) ?? 1;
-        final calculatedPrice = pricePerBaseUnit * conversionRate;
-        unitController['price']!.text = calculatedPrice.round().toString();
-      }
-    });
+  });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Harga berhasil dihitung berdasarkan satuan terbesar."))
+      );
   }
   
   void _saveItem() {
@@ -156,6 +186,75 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
       Navigator.of(context).pop();
     }
   }
+
+  void _showGuidanceDialog() {
+  showDialog(
+    context: context,
+    builder: (context) {
+      final headerStyle = const TextStyle(fontWeight: FontWeight.bold);
+      final cellPadding = const EdgeInsets.all(8.0);
+      return AlertDialog(
+        title: const Text('Panduan Pengisian Satuan'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Konsep utama adalah "Satuan Dasar", yaitu satuan terkecil dari item Anda (contoh: Gram, Pcs, Ml).\n',
+              ),
+              const Text(
+                '1. Satuan pertama yang Anda isi dianggap sebagai Satuan Dasar. Kolom "Isi/Konversi"-nya harus selalu diisi "1".',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '2. Satuan berikutnya diukur berdasarkan Satuan Dasar tersebut.',
+              ),
+              const SizedBox(height: 16),
+              const Text('Contoh Kasus: Paku (Satuan Dasar = Gram)', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Table(
+                border: TableBorder.all(color: Colors.grey),
+                children: [
+                  TableRow(children: [
+                    Padding(padding: cellPadding, child: Text('Nama Satuan', style: headerStyle)),
+                    Padding(padding: cellPadding, child: Text('Isi / Konversi', style: headerStyle)),
+                  ]),
+                  TableRow(children: [
+                    Padding(padding: cellPadding, child: const Text('Gram (Dasar)')),
+                    Padding(padding: cellPadding, child: const Text('1')),
+                  ]),
+                  TableRow(children: [
+                    Padding(padding: cellPadding, child: const Text('1/4 kg')),
+                    Padding(padding: cellPadding, child: const Text('250')),
+                  ]),
+                   TableRow(children: [
+                    Padding(padding: cellPadding, child: const Text('1/2 kg')),
+                    Padding(padding: cellPadding, child: const Text('500')),
+                  ]),
+                   TableRow(children: [
+                    Padding(padding: cellPadding, child: const Text('1 kg')),
+                    Padding(padding: cellPadding, child: const Text('1000')),
+                  ]),
+                ],
+              ),
+               const SizedBox(height: 16),
+               const Text('Tips: Gunakan tombol "Markup" atau "Pembagian" untuk menghitung harga jual & beli secara otomatis.'),
+
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Mengerti'),
+          ),
+        ],
+      );
+    },
+  );
+}
 
   @override
   void dispose() {
@@ -199,7 +298,26 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _barcodeController,
-                decoration: const InputDecoration(labelText: 'Barcode (Opsional)'),
+                decoration: InputDecoration(
+                  labelText: 'Barcode (Opsional)',
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.qr_code_scanner),
+                    tooltip: 'Pindai Barcode',
+                    onPressed: () async {
+                      final String? scannedBarcode = await Navigator.of(context).push<String>(
+                        MaterialPageRoute(
+                          builder: (context) => const ScannerScreen(),
+                        ),
+                      );
+
+                      if (scannedBarcode != null && scannedBarcode.isNotEmpty) {
+                        setState(() {
+                          _barcodeController.text = scannedBarcode;
+                        });
+                      }
+                    },
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
               Row(
@@ -209,8 +327,18 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                   ElevatedButton.icon(icon: const Icon(Icons.arrow_downward), onPressed: _suggestPriceDivision, label: const Text("Pembagian")),
                 ],
               ),
-              const Divider(height: 32),
-              Text("Daftar Satuan", style: Theme.of(context).textTheme.titleLarge),
+             const Divider(height: 32),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Daftar Satuan", style: Theme.of(context).textTheme.titleLarge),
+                    IconButton(
+                      icon: const Icon(Icons.info_outline, color: Colors.blue),
+                      onPressed: _showGuidanceDialog, 
+                      tooltip: 'Lihat Panduan Pengisian',
+                    ),
+                  ],
+                ),
               const SizedBox(height: 8),
               ListView.builder(
                 shrinkWrap: true,

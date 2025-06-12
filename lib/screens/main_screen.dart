@@ -42,12 +42,16 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   Future<void> _checkAndTriggerAutoBackup() async {
     final prefs = await SharedPreferences.getInstance();
-    final lastBackupTimestamp = prefs.getInt('lastBackupTimestamp') ?? 0;
+    final int? lastBackupTimestamp = prefs.getInt('lastBackupTimestamp');
+
+    if (lastBackupTimestamp == null) {
+      return;
+    }
+
     final now = DateTime.now().millisecondsSinceEpoch;
     const sevenDaysInMillis = 7 * 24 * 60 * 60 * 1000;
 
     if ((now - lastBackupTimestamp) > sevenDaysInMillis) {
-      // Pastikan context masih valid sebelum memanggil dialog
       if (mounted) {
         _showForcedBackupDialog();
       }

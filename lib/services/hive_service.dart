@@ -6,6 +6,7 @@ import 'package:pos_mutama/models/store_info.dart';
 import 'package:pos_mutama/models/transaction.dart';
 import 'package:pos_mutama/models/transaction_item.dart';
 import 'package:pos_mutama/models/item_unit.dart';
+import 'package:pos_mutama/models/payment_record.dart';
 
 class HiveService {
   static const String customersBoxName = 'customers';
@@ -38,6 +39,9 @@ class HiveService {
     }
     if (!Hive.isAdapterRegistered(ItemUnitAdapter().typeId)) {
       Hive.registerAdapter(ItemUnitAdapter());
+    }
+    if (!Hive.isAdapterRegistered(PaymentRecordAdapter().typeId)) {
+      Hive.registerAdapter(PaymentRecordAdapter()); 
     }
   }
 

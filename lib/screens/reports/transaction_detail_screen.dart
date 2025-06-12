@@ -10,12 +10,14 @@ import 'package:printing/printing.dart';
 import 'package:pos_mutama/screens/reports/edit_transaction_screen.dart';
 
 class TransactionDetailScreen extends ConsumerWidget {
-  final Transaction transaction;
+  final String transactionId;
 
-  const TransactionDetailScreen({super.key, required this.transaction});
+  const TransactionDetailScreen({super.key, required this.transactionId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final allTransactions = ref.watch(transactionProvider);
+    final transaction = allTransactions.firstWhere((t) => t.id == transactionId, orElse: () => allTransactions.first);
     final storeInfo = ref.watch(storeInfoProvider);
     final numberFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     final remainingAmount = transaction.totalAmount - transaction.paidAmount;
@@ -160,6 +162,21 @@ class TransactionDetailScreen extends ConsumerWidget {
                   trailing: Text(numberFormat.format(item.quantity * item.price)),
                 ),
               )),
+          const SizedBox(height: 20),
+          if (transaction.paymentHistory.isNotEmpty)
+            Card(
+              child: ExpansionTile(
+                title: const Text('Riwayat Pembayaran'),
+                leading: const Icon(Icons.history),
+                initiallyExpanded: true,
+                children: transaction.paymentHistory.map((record) {
+                  return ListTile(
+                    title: Text(numberFormat.format(record.amount)),
+                    trailing: Text(DateFormat('dd/MM/yy HH:mm').format(record.date)),
+                  );
+                }).toList(),
+              ),
+            ),
         ],
       ),
       bottomNavigationBar: transaction.status != 'Lunas'
@@ -231,6 +248,9 @@ class _PayDebtDialogState extends ConsumerState<PayDebtDialog> {
       final amountToPay = int.parse(_amountController.text);
       ref.read(transactionProvider.notifier).recordDebtPayment(widget.transactionId, amountToPay);
       Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pembayaran berhasil dicatat!'), backgroundColor: Colors.green)
+      );
     }
   }
 

@@ -191,7 +191,7 @@ class TransactionListView extends StatelessWidget {
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => TransactionDetailScreen(transaction: transaction),
+                  builder: (context) => TransactionDetailScreen(transactionId: transaction.id),
                 ),
               );
             },

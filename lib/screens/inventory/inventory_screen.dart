@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:pos_mutama/providers/item_provider.dart';
 import 'package:pos_mutama/screens/inventory/add_edit_item_screen.dart';
 import 'package:pos_mutama/utils/csv_helper.dart';
+import 'package:pos_mutama/screens/pos/scanner_screen.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
@@ -170,9 +171,24 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             padding: const EdgeInsets.all(8.0),
             child: TextField(
               controller: _searchController,
-              decoration: const InputDecoration(
-                hintText: 'Cari berdasarkan nama atau barcode...',
-                prefixIcon: Icon(Icons.search),
+              decoration: InputDecoration( 
+                hintText: 'Cari nama atau pindai barcode...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.qr_code_scanner),
+                  tooltip: 'Pindai untuk Mencari',
+                  onPressed: () async {
+                    final String? scannedBarcode = await Navigator.of(context).push<String>(
+                      MaterialPageRoute(
+                        builder: (context) => const ScannerScreen(),
+                      ),
+                    );
+
+                    if (scannedBarcode != null && scannedBarcode.isNotEmpty) {
+                      _searchController.text = scannedBarcode;
+                    }
+                  },
+                ),
               ),
             ),
           ),
@@ -208,9 +224,49 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                                   ],
                                 ),
                                 actions: [
+                                  // Tombol Hapus (BARU)
                                   TextButton(
-                                    child: const Text('Tutup'),
-                                    onPressed: () => Navigator.of(ctx).pop(),
+                                    child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+                                    onPressed: () {
+                                      // Tutup dialog pertama
+                                      Navigator.of(ctx).pop(); 
+                                      // Tampilkan dialog konfirmasi kedua (Peringatan Keras)
+                                      showDialog(
+                                        context: context,
+                                        builder: (dialogContext) => AlertDialog(
+                                          title: const Text('HAPUS ITEM INI?'),
+                                          content: const Text(
+                                            'Anda yakin ingin menghapus item ini secara permanen? Aksi ini TIDAK DAPAT DIBATALKAN.',
+                                            style: TextStyle(fontWeight: FontWeight.bold),
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              child: const Text('Batal'),
+                                              onPressed: () => Navigator.of(dialogContext).pop(),
+                                            ),
+                                            ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.red, // Warna merah untuk menegaskan
+                                              ),
+                                              child: const Text('Ya, Hapus Permanen'),
+                                              onPressed: () {
+                                                // Panggil provider untuk hapus item
+                                                ref.read(itemProvider.notifier).deleteItem(item.id);
+                                                // Tutup dialog konfirmasi
+                                                Navigator.of(dialogContext).pop();
+                                                // Beri notifikasi
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('Item "${item.name}" berhasil dihapus.'),
+                                                    backgroundColor: Colors.green,
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
                                   ),
                                   TextButton(
                                     child: const Text('Edit'),
@@ -224,6 +280,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                                         );
                                       }
                                     },
+                                  ),
+                                  // Tombol Tutup kita pindah ke paling kanan agar lebih standar
+                                  ElevatedButton(
+                                    child: const Text('Tutup'),
+                                    onPressed: () => Navigator.of(ctx).pop(),
                                   ),
                                 ],
                               ),

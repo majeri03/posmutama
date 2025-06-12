@@ -28,23 +28,28 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
   late Customer? _selectedCustomer;
   late int _totalAmount;
   final _searchController = TextEditingController();
+  // Kebutuhan data item asli untuk perhitungan stok
+  late List<Item> _allItems; 
 
   @override
   void initState() {
     super.initState();
-    // Inisialisasi state lokal dengan data dari transaksi asli
+    // Ambil data item sekali saja saat inisialisasi
+    _allItems = ref.read(itemProvider);
+
+    // Salin item transaksi ke keranjang edit lokal
     _itemsInCart = widget.originalTransaction.items.map((item) {
-      // Buat salinan item agar tidak mengubah data asli secara langsung
       return TransactionItem(
         id: item.id,
         name: item.name,
         price: item.price,
         quantity: item.quantity,
         purchasePrice: item.purchasePrice,
-        unitName: item.unitName, // TAMBAHKAN INI
-        conversionRate: item.conversionRate, // TAMBAHKAN INI
+        unitName: item.unitName,
+        conversionRate: item.conversionRate,
       );
     }).toList();
+
     _selectedCustomer = widget.originalTransaction.customer;
     _calculateTotal();
   }
@@ -55,82 +60,120 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
     super.dispose();
   }
 
-  // --- Helper Methods untuk Mengelola Keranjang Lokal ---
+  // --- HELPER BARU: Menghitung total stok yang tersedia untuk sesi edit ---
+  // Stok ini adalah: Stok gudang saat ini + Stok yang "dikembalikan" dari transaksi asli
+  int _getAvailableStockForEdit(String itemId) {
+    final itemInDb = _allItems.firstWhere((i) => i.id == itemId);
+    final originalTxItem = widget.originalTransaction.items.firstWhereOrNull((i) => i.id == itemId);
+    
+    // Jika item ada di transaksi asli, kembalikan stoknya secara virtual
+    final originalQuantityInBase = originalTxItem != null ? (originalTxItem.quantity * originalTxItem.conversionRate) : 0;
+    
+    return itemInDb.stockInBaseUnit + originalQuantityInBase;
+  }
+
+  // --- HELPER BARU: Menghitung stok item yang saat ini ada di keranjang edit (dalam satuan dasar) ---
+  int _getCurrentCartStockInBase(String itemId) {
+    return _itemsInCart
+        .where((i) => i.id == itemId)
+        .fold(0, (sum, item) => sum + (item.quantity * item.conversionRate));
+  }
+
   void _calculateTotal() {
     setState(() {
       _totalAmount = _itemsInCart.fold(0, (sum, item) => sum + (item.price * item.quantity));
     });
   }
 
+  // --- FUNGSI DIPERBAIKI DENGAN VALIDASI STOK ---
   void _addItemToCart(Item item) {
+    final availableStock = _getAvailableStockForEdit(item.id);
+    final cartStock = _getCurrentCartStockInBase(item.id);
+    final selectedUnit = item.units.first; // Asumsi satuan dasar
+
+    // Cek apakah masih ada sisa stok untuk ditambah
+    if (cartStock + selectedUnit.conversionRate > availableStock) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Stok tidak cukup untuk menambah item ini'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
     setState(() {
-      final existingIndex = _itemsInCart.indexWhere((i) => i.id == item.id);
+      final existingIndex = _itemsInCart.indexWhere((i) => i.id == item.id && i.unitName == selectedUnit.name);
       if (existingIndex != -1) {
         _itemsInCart[existingIndex].quantity++;
       } else {
         _itemsInCart.add(TransactionItem(
           id: item.id,
           name: item.name,
-          price: item.units.first.price, // Ambil dari satuan dasar
+          price: selectedUnit.price,
           quantity: 1,
-          purchasePrice: item.units.first.purchasePrice, // Ambil dari satuan dasar
-          unitName: item.units.first.name, // TAMBAHKAN INI
-          conversionRate: item.units.first.conversionRate, // TAMBAHKAN INI
+          purchasePrice: selectedUnit.purchasePrice,
+          unitName: selectedUnit.name,
+          conversionRate: selectedUnit.conversionRate,
         ));
       }
     });
     _calculateTotal();
   }
 
-  void _increaseQuantity(String itemId) {
+  // --- FUNGSI DIPERBAIKI DENGAN VALIDASI STOK ---
+  void _increaseQuantity(String itemId, String unitName) {
+    final availableStock = _getAvailableStockForEdit(itemId);
+    final cartStock = _getCurrentCartStockInBase(itemId);
+    final itemInCart = _itemsInCart.firstWhere((i) => i.id == itemId && i.unitName == unitName);
+    
+    // Cek apakah penambahan 1 unit masih dalam batas stok
+    if (cartStock + itemInCart.conversionRate > availableStock) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Stok tidak cukup!'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
     setState(() {
-      final item = _itemsInCart.firstWhere((i) => i.id == itemId);
-      item.quantity++;
+      itemInCart.quantity++;
     });
     _calculateTotal();
   }
 
-  void _decreaseQuantity(String itemId) {
+  void _decreaseQuantity(String itemId, String unitName) {
     setState(() {
-      final item = _itemsInCart.firstWhere((i) => i.id == itemId);
+      final item = _itemsInCart.firstWhere((i) => i.id == itemId && i.unitName == unitName);
       if (item.quantity > 1) {
         item.quantity--;
       } else {
-        _itemsInCart.removeWhere((i) => i.id == itemId);
+        _itemsInCart.removeWhere((i) => i.id == itemId && i.unitName == unitName);
       }
     });
     _calculateTotal();
   }
 
   void _onSaveChanges() {
-    // Buat objek transaksi baru berdasarkan state lokal saat ini
     final newTransaction = Transaction(
       id: widget.originalTransaction.id,
       date: widget.originalTransaction.date,
       items: _itemsInCart,
       totalAmount: _totalAmount,
       customer: _selectedCustomer,
-      // Pertahankan detail pembayaran asli
       status: widget.originalTransaction.status,
       paidAmount: widget.originalTransaction.paidAmount,
       changeAmount: widget.originalTransaction.changeAmount,
       paymentMethod: widget.originalTransaction.paymentMethod,
     );
 
-    // Panggil provider untuk update
     ref.read(transactionProvider.notifier).updateTransaction(widget.originalTransaction, newTransaction);
 
-    // Kembali ke dua layar sebelumnya (ke daftar laporan)
     Navigator.of(context).pop();
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Transaksi berhasil diperbarui!")));
   }
 
-  // --- Tampilan UI (mirip dengan POSScreen) ---
   @override
   Widget build(BuildContext context) {
-    final allItems = ref.watch(itemProvider);
-    final searchedItems = allItems.where((item) {
+    // _allItems sudah di-cache di initState, kita tinggal filter di sini
+    final searchedItems = _allItems.where((item) {
       final query = _searchController.text.toLowerCase();
       if (query.isEmpty) return true;
       return item.name.toLowerCase().contains(query) || (item.barcode?.contains(query) ?? false);
@@ -149,32 +192,32 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
       ),
       body: LayoutBuilder(builder: (context, constraints) {
         if (constraints.maxWidth > 800) {
-          return _buildWideLayout(allItems, searchedItems);
+          return _buildWideLayout(searchedItems);
         }
-        return _buildNarrowLayout(allItems, searchedItems);
+        return _buildNarrowLayout(searchedItems);
       }),
     );
   }
 
-  Widget _buildWideLayout(List<Item> allItems, List<Item> searchedItems) {
+  Widget _buildWideLayout(List<Item> searchedItems) {
     return Row(
       children: [
-        Expanded(flex: 2, child: _buildItemGrid(allItems, searchedItems)),
-        Expanded(flex: 1, child: _buildCart(allItems)),
+        Expanded(flex: 2, child: _buildItemGrid(searchedItems)),
+        Expanded(flex: 1, child: _buildCart()),
       ],
     );
   }
 
-  Widget _buildNarrowLayout(List<Item> allItems, List<Item> searchedItems) {
+  Widget _buildNarrowLayout(List<Item> searchedItems) {
     return Column(
       children: [
-        Expanded(flex: 1, child: _buildCart(allItems)),
-        Expanded(flex: 1, child: _buildItemGrid(allItems, searchedItems)),
+        Expanded(flex: 1, child: _buildCart()),
+        Expanded(flex: 1, child: _buildItemGrid(searchedItems)),
       ],
     );
   }
 
-  Widget _buildItemGrid(List<Item> allItems, List<Item> searchedItems) {
+  Widget _buildItemGrid(List<Item> searchedItems) {
     return Column(
       children: [
         Padding(
@@ -200,23 +243,27 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
             itemCount: searchedItems.length,
             itemBuilder: (context, index) {
               final item = searchedItems[index];
-              final originalTxItem = widget.originalTransaction.items.firstWhereOrNull((i) => i.id == item.id);
-              final itemInCart = _itemsInCart.firstWhereOrNull((i) => i.id == item.id);
 
-              final initialStock = item.stockInBaseUnit + (originalTxItem != null ? (originalTxItem.quantity * originalTxItem.conversionRate) : 0);
-              final displayedStock = initialStock - (itemInCart?.quantity ?? 0);
+              // --- LOGIKA STOK DIPERBAIKI ---
+              final availableStockForEdit = _getAvailableStockForEdit(item.id);
+              final currentCartStock = _getCurrentCartStockInBase(item.id);
+              final remainingStockInBase = availableStockForEdit - currentCartStock;
+              
+              final baseUnitName = item.units.first.name;
+              final canAdd = remainingStockInBase > 0;
 
               return Card(
                 child: InkWell(
-                  onTap: displayedStock > 0 ? () => _addItemToCart(item) : null,
+                  onTap: canAdd ? () => _addItemToCart(item) : null,
                   child: GridTile(
                     footer: GridTileBar(
                       backgroundColor: Colors.black45,
                       title: Text(item.name),
-                      subtitle: Text('Stok: $displayedStock'),
+                      // Tampilkan sisa stok yang bisa diedit
+                      subtitle: Text('Sisa Stok: $remainingStockInBase $baseUnitName'),
                     ),
-                    child: displayedStock <= 0
-                        ? Container(color: Colors.black54, child: const Center(child: Text('Stok Habis')))
+                    child: !canAdd
+                        ? Container(color: Colors.black54, child: const Center(child: Text('Stok Habis', style: TextStyle(color: Colors.white))))
                         : Container(color: Colors.teal.shade100, child: const Icon(Icons.add_shopping_cart)),
                   ),
                 ),
@@ -228,7 +275,7 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
     );
   }
 
-  Widget _buildCart(List<Item> allItems) {
+  Widget _buildCart() {
     final numberFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     return Card(
       margin: const EdgeInsets.all(8.0),
@@ -246,14 +293,14 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
                     itemBuilder: (context, index) {
                       final cartItem = _itemsInCart[index];
                       return ListTile(
-                        title: Text(cartItem.name),
+                        title: Text('${cartItem.name} (${cartItem.unitName})'),
                         subtitle: Text(numberFormat.format(cartItem.price)),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            IconButton(onPressed: () => _decreaseQuantity(cartItem.id), icon: const Icon(Icons.remove)),
+                            IconButton(onPressed: () => _decreaseQuantity(cartItem.id, cartItem.unitName), icon: const Icon(Icons.remove)),
                             Text(cartItem.quantity.toString()),
-                            IconButton(onPressed: () => _increaseQuantity(cartItem.id), icon: const Icon(Icons.add)),
+                            IconButton(onPressed: () => _increaseQuantity(cartItem.id, cartItem.unitName), icon: const Icon(Icons.add)),
                           ],
                         ),
                       );

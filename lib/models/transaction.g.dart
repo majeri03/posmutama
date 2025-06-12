@@ -23,9 +23,9 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       totalAmount: fields[3] as int,
       customer: fields[4] as Customer?,
       status: fields[5] as String,
-      paidAmount: fields[6] as int,
       changeAmount: fields[7] as int,
       paymentMethod: fields[8] as String,
+      paymentHistory: (fields[9] as List).cast<PaymentRecord>(),
     );
   }
 
@@ -45,12 +45,12 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       ..write(obj.customer)
       ..writeByte(5)
       ..write(obj.status)
-      ..writeByte(6)
-      ..write(obj.paidAmount)
       ..writeByte(7)
       ..write(obj.changeAmount)
       ..writeByte(8)
-      ..write(obj.paymentMethod);
+      ..write(obj.paymentMethod)
+      ..writeByte(9)
+      ..write(obj.paymentHistory);
   }
 
   @override

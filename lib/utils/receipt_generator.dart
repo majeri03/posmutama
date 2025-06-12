@@ -1,6 +1,5 @@
 import 'dart:typed_data';
-
-import 'package:flutter/services.dart'; // Diperlukan untuk memuat font ikon
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -14,115 +13,116 @@ Future<Uint8List> generateReceipt(
 ) async {
   final pdf = pw.Document();
 
-  // Memuat font Material Icons bawaan Flutter untuk digunakan di PDF
-  final fontData = await rootBundle.load('fonts/MaterialIcons-Regular.otf');
-  final ttf = pw.Font.ttf(fontData);
-  final constructionIcon = pw.IconData(0xe189); // Kode untuk ikon 'construction'
+  // --- PERUBAHAN: Memuat gambar logo Anda dari assets ---
+  final ByteData logoData = await rootBundle.load('assets/images/icon.png');
+  final Uint8List logoBytes = logoData.buffer.asUint8List();
+  final pw.ImageProvider logoImage = pw.MemoryImage(logoBytes);
 
   // Helper untuk format angka dan tanggal
-  final numberFormat =
-      NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-  final quantityFormat =
-      NumberFormat.decimalPattern('id_ID'); // Untuk format kuantitas
-  final dateFormat = DateFormat('dd-MM-yyyy');
-  final timeFormat = DateFormat('HH:mm:ss');
+  final numberFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+  final quantityFormat = NumberFormat.decimalPattern('id_ID');
+  final dateFormat = DateFormat('dd/MM/yyyy', 'id_ID');
+  final timeFormat = DateFormat('HH:mm:ss', 'id_ID');
 
-  // Helper untuk garis pemisah
+  // --- PERUBAHAN: Garis pemisah yang lebih rapi ---
   final divider = pw.Padding(
     padding: const pw.EdgeInsets.symmetric(vertical: 4),
-    child: pw.Text('--------------------------------',
-        style: const pw.TextStyle(fontSize: 8)),
+    child: pw.Divider(
+      height: 1,
+      borderStyle: pw.BorderStyle.dotted,
+    ),
   );
 
   pdf.addPage(
     pw.Page(
-      pageFormat: PdfPageFormat.roll80,
+      pageFormat: PdfPageFormat.roll80, // Ukuran kertas struk thermal 80mm
       margin: const pw.EdgeInsets.all(12),
       build: (pw.Context context) {
-        // --- Mulai membangun konten PDF ---
         return pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
             // ================== HEADER ==================
+            // --- PERUBAHAN: Layout header baru dengan logo gambar ---
             pw.Row(
               children: [
-                pw.Icon(constructionIcon, font: ttf, size: 32),
+                pw.SizedBox(
+                  height: 40,
+                  width: 40,
+                  child: pw.Image(logoImage, fit: pw.BoxFit.contain),
+                ),
                 pw.SizedBox(width: 8),
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text(storeName,
-                        style: pw.TextStyle(
-                            fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                    pw.Text(storeAddress,
-                        style: const pw.TextStyle(fontSize: 8)),
+                    pw.Text(storeName, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                    pw.Text(storeAddress, style: const pw.TextStyle(fontSize: 8)),
                     if (storePhone != null && storePhone.isNotEmpty)
-                      pw.Text('Telp: $storePhone',
-                          style: const pw.TextStyle(fontSize: 8)),
+                      pw.Text('Telp: $storePhone', style: const pw.TextStyle(fontSize: 8)),
                   ],
-                )
+                ),
               ],
             ),
-            pw.SizedBox(height: 8),
-            pw.Text('ID: ${transaction.id.substring(0, 13)}',
-                style: const pw.TextStyle(fontSize: 8)),
-            divider,
-
-            // ================== INFO TRANSAKSI & PELANGGAN ==================
+            pw.SizedBox(height: 12),
+            
+            // ================== INFO TRANSAKSI ==================
+            // --- PERUBAHAN: Layout info transaksi lebih rapi ---
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(dateFormat.format(transaction.date),
-                        style: const pw.TextStyle(fontSize: 8)),
-                    pw.Text(timeFormat.format(transaction.date),
-                        style: const pw.TextStyle(fontSize: 8)),
-                  ],
+                pw.Text('Tanggal:', style: const pw.TextStyle(fontSize: 8)),
+                pw.Text(
+                  '${dateFormat.format(transaction.date)} ${timeFormat.format(transaction.date)}',
+                  style: const pw.TextStyle(fontSize: 8),
                 ),
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.end,
-                  children: [
-                    pw.Text(transaction.customer?.name ?? 'Umum',
-                        style: const pw.TextStyle(fontSize: 8)),
-                    if (transaction.customer?.address != null &&
-                        transaction.customer!.address!.isNotEmpty)
-                      pw.Text(transaction.customer!.address!,
-                          style: const pw.TextStyle(fontSize: 8)),
-                  ],
-                )
+              ],
+            ),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('No. Struk:', style: const pw.TextStyle(fontSize: 8)),
+                pw.Text(transaction.id.substring(0, 13), style: const pw.TextStyle(fontSize: 8)),
+              ],
+            ),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('Kasir:', style: const pw.TextStyle(fontSize: 8)),
+                pw.Text('Admin', style: const pw.TextStyle(fontSize: 8)), // Ganti dengan nama kasir jika ada
+              ],
+            ),
+             pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('Pelanggan:', style: const pw.TextStyle(fontSize: 8)),
+                pw.Text(transaction.customer?.name ?? 'Umum', style: const pw.TextStyle(fontSize: 8)),
               ],
             ),
             divider,
 
             // ================== DAFTAR ITEM ==================
-            // Menggunakan for loop untuk menampilkan setiap item
-            for (int i = 0; i < transaction.items.length; i++)
+            // --- PERUBAHAN: Menampilkan detail item dengan satuan dan subtotal ---
+            for (final item in transaction.items)
               pw.Padding(
-                padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                padding: const pw.EdgeInsets.symmetric(vertical: 3),
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('${i + 1}. ${transaction.items[i].name}',
-                        style: pw.TextStyle(
-                            fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                    pw.Text(item.name, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
                     pw.Row(
                       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                       children: [
+                        // Menampilkan: 2 Sak x Rp 55.000
                         pw.Text(
-                          '   ${quantityFormat.format(transaction.items[i].quantity)} x ${quantityFormat.format(transaction.items[i].price)}',
+                          '  ${quantityFormat.format(item.quantity)} ${item.unitName} x ${numberFormat.format(item.price)}',
                           style: const pw.TextStyle(fontSize: 8),
                         ),
+                        // Menampilkan subtotal per item
                         pw.Text(
-                          numberFormat
-                              .format(transaction.items[i].price *
-                                  transaction.items[i].quantity)
-                              .replaceAll('Rp', ''), // Hapus 'Rp' agar rata kanan
+                          numberFormat.format(item.price * item.quantity),
                           style: const pw.TextStyle(fontSize: 8),
                         ),
                       ],
-                    )
+                    ),
                   ],
                 ),
               ),
@@ -132,83 +132,77 @@ Future<Uint8List> generateReceipt(
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text('Total QTY:', style: const pw.TextStyle(fontSize: 8)),
+                pw.Text('Total Item:', style: const pw.TextStyle(fontSize: 8)),
                 pw.Text(
-                    quantityFormat.format(transaction.items
-                        .fold(0, (sum, item) => sum + item.quantity)),
-                    style: const pw.TextStyle(fontSize: 8)),
+                  quantityFormat.format(transaction.items.fold(0, (sum, item) => sum + item.quantity)),
+                  style: const pw.TextStyle(fontSize: 8),
+                ),
               ],
             ),
             pw.SizedBox(height: 4),
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text('Sub Total', style: const pw.TextStyle(fontSize: 8)),
+                pw.Text('Total Belanja', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                 pw.Text(
-                    numberFormat
-                        .format(transaction.totalAmount)
-                        .replaceAll('Rp', ''),
-                    style: const pw.TextStyle(fontSize: 8)),
+                  numberFormat.format(transaction.totalAmount),
+                  style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                ),
               ],
             ),
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Text('Total',
-                    style: pw.TextStyle(
-                        fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                pw.Text(numberFormat.format(transaction.totalAmount),
-                    style: pw.TextStyle(
-                        fontSize: 10, fontWeight: pw.FontWeight.bold)),
-              ],
-            ),
-            pw.SizedBox(height: 4),
+            pw.SizedBox(height: 8),
+            if (transaction.paymentHistory.length > 1) ...[
+              pw.SizedBox(height: 8),
+              pw.Text('RIWAYAT PEMBAYARAN:', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+              for (final record in transaction.paymentHistory)
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(DateFormat('dd/MM/yy').format(record.date), style: const pw.TextStyle(fontSize: 8)),
+                    pw.Text(numberFormat.format(record.amount), style: const pw.TextStyle(fontSize: 8)),
+                  ],
+                ),
+              divider,
+            ],
 
-            if (transaction.status == 'Lunas') ...[
+            // Menampilkan detail pembayaran hanya jika sudah ada pembayaran
+            if (transaction.status == 'Lunas' || transaction.status == 'DP') ...[
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('Bayar (${transaction.paymentMethod})',
-                      style: const pw.TextStyle(fontSize: 8)),
-                  pw.Text(
-                      numberFormat
-                          .format(transaction.paidAmount)
-                          .replaceAll('Rp', ''),
-                      style: const pw.TextStyle(fontSize: 8)),
+                  pw.Text('Bayar (${transaction.paymentMethod})', style: const pw.TextStyle(fontSize: 8)),
+                  pw.Text(numberFormat.format(transaction.paidAmount), style: const pw.TextStyle(fontSize: 8)),
                 ],
               ),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text('Kembali', style: const pw.TextStyle(fontSize: 8)),
-                  pw.Text(
-                      numberFormat
-                          .format(transaction.changeAmount)
-                          .replaceAll('Rp', ''),
-                      style: const pw.TextStyle(fontSize: 8)),
-                ],
-              ),
-            ] else ...[
-              // Menampilkan status jika belum lunas
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('Status',
-                      style: pw.TextStyle(
-                          fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                  pw.Text(transaction.status,
-                      style: pw.TextStyle(
-                          fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                  pw.Text(numberFormat.format(transaction.changeAmount), style: const pw.TextStyle(fontSize: 8)),
                 ],
               ),
             ],
-            divider,
 
+            // Menampilkan status jika belum lunas
+            if (transaction.status != 'Lunas') ...[
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Status', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                  pw.Text(transaction.status, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.red)),
+                ],
+              ),
+            ],
+            
+            pw.SizedBox(height: 12),
+            divider,
+            
             // ================== FOOTER ==================
             pw.Center(
-              child: pw.Text('Terima Kasih Telah Berbelanja',
-                  style: pw.TextStyle(
-                      fontSize: 8, fontStyle: pw.FontStyle.italic)),
+              child: pw.Text('Terima Kasih Telah Berbelanja!', style: pw.TextStyle(fontSize: 8, fontStyle: pw.FontStyle.italic)),
+            ),
+            pw.Center(
+              child: pw.Text('Barang yang sudah dibeli tidak dapat dikembalikan.', style: const pw.TextStyle(fontSize: 7)),
             ),
           ],
         );
