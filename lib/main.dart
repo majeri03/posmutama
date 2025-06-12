@@ -35,7 +35,8 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         inputDecorationTheme: const InputDecorationTheme(
           border: OutlineInputBorder(),
-        )
+          floatingLabelBehavior: FloatingLabelBehavior.always, 
+        ),
       ),
       debugShowCheckedModeBanner: false,
       home: isFirstRun ? const StoreSetupScreen() : const MainScreen(),
