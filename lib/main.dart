@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:intl/date_symbol_data_local.dart'; 
 import 'package:pos_mutama/models/store_info.dart';
 import 'package:pos_mutama/screens/main_screen.dart';
 import 'package:pos_mutama/screens/settings/store_setup_screen.dart';
@@ -8,6 +9,8 @@ import 'package:pos_mutama/services/hive_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await initializeDateFormatting('id_ID', null);
   
   final hiveService = HiveService();
   await hiveService.init();
