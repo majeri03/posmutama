@@ -4,7 +4,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:pos_mutama/models/transaction.dart';
 import 'package:pos_mutama/providers/reports_filter_provider.dart';
 import 'package:collection/collection.dart';
 

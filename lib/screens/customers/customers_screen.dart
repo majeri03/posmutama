@@ -67,7 +67,7 @@ class CustomersScreen extends ConsumerWidget {
                           onTap: (){
                              Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (context) => TransactionDetailScreen(transaction: tx),
+                                builder: (context) => TransactionDetailScreen(transactionId: tx.id),
                               ),
                             );
                           },

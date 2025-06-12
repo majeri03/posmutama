@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
-import 'package:file_saver/file_saver.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import 'package:pos_mutama/models/customer.dart';

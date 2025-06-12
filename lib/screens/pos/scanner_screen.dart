@@ -97,7 +97,7 @@ class ScannerOverlay extends CustomPainter {
     final cutoutPath = Path()..addRect(scanWindow);
 
     final backgroundPaint = Paint()
-      ..color = Colors.black.withOpacity(0.6);
+      ..color = Colors.black.withAlpha(153);
 
     final borderPaint = Paint()
       ..color = Colors.white

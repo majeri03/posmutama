@@ -1,14 +1,12 @@
 // File: lib/screens/reports/edit_transaction_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:pos_mutama/models/customer.dart';
 import 'package:pos_mutama/models/item.dart';
 import 'package:pos_mutama/models/transaction.dart';
 import 'package:pos_mutama/models/transaction_item.dart';
-import 'package:pos_mutama/providers/customer_provider.dart';
 import 'package:pos_mutama/providers/item_provider.dart';
 import 'package:pos_mutama/providers/transaction_provider.dart';
 import 'package:collection/collection.dart';
@@ -158,9 +156,9 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
       totalAmount: _totalAmount,
       customer: _selectedCustomer,
       status: widget.originalTransaction.status,
-      paidAmount: widget.originalTransaction.paidAmount,
       changeAmount: widget.originalTransaction.changeAmount,
       paymentMethod: widget.originalTransaction.paymentMethod,
+      paymentHistory: widget.originalTransaction.paymentHistory,
     );
 
     ref.read(transactionProvider.notifier).updateTransaction(widget.originalTransaction, newTransaction);

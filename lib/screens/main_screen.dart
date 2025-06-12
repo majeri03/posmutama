@@ -78,7 +78,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 onPressed: () async {
                   final result = await backupHelper.createBackup();
                   
-                  if (!dialogContext.mounted) return;
+                  if (!context.mounted) return; 
 
                   ScaffoldMessenger.of(dialogContext).showSnackBar(
                     SnackBar(content: Text(result)),

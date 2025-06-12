@@ -14,7 +14,6 @@ import 'package:pos_mutama/providers/transaction_provider.dart';
 import 'package:pos_mutama/screens/customers/add_edit_customer_screen.dart';
 import 'package:pos_mutama/screens/pos/receipt_screen.dart';
 import 'package:pos_mutama/screens/pos/scanner_screen.dart';
-import 'package:collection/collection.dart'; // Import yang diperlukan
 
 class POSScreen extends ConsumerStatefulWidget {
   const POSScreen({super.key});
@@ -497,7 +496,7 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
 
       if (!mounted) return;
       Navigator.of(context).pop(); // Close dialog
-
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (context) => ReceiptScreen(transaction: newTransaction),

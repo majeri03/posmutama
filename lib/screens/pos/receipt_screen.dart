@@ -5,6 +5,7 @@ import 'package:pos_mutama/providers/store_info_provider.dart';
 import 'package:pos_mutama/screens/main_screen.dart';
 import 'package:pos_mutama/utils/receipt_generator.dart';
 import 'package:printing/printing.dart';
+import 'package:cross_file/cross_file.dart';
 import 'package:share_plus/share_plus.dart';
 
 class ReceiptScreen extends ConsumerWidget {
@@ -73,15 +74,19 @@ class ReceiptScreen extends ConsumerWidget {
                     storeInfo.address,
                     storeInfo.phone,
                   );
+
+                  // Membuat XFile dari data PDF
                   final xfile = XFile.fromData(
                     pdfData,
                     name: 'struk-${transaction.id.substring(0, 8)}.pdf',
                     mimeType: 'application/pdf',
                   );
+
+                  // Memanggil method shareXFiles dari kelas Share
                   await Share.shareXFiles([xfile], text: 'Struk Pembelian');
                 }
               },
-               style: ElevatedButton.styleFrom(
+              style: ElevatedButton.styleFrom(
                 minimumSize: const Size(200, 50),
               ),
             ),

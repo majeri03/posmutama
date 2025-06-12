@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:pos_mutama/models/transaction.dart';
 import 'package:pos_mutama/providers/store_info_provider.dart';
 import 'package:pos_mutama/providers/transaction_provider.dart';
 import 'package:pos_mutama/utils/receipt_generator.dart';
