@@ -68,22 +68,33 @@ class ReceiptScreen extends ConsumerWidget {
               label: const Text('Bagikan Struk'),
               onPressed: () async {
                 if (storeInfo != null) {
-                  final pdfData = await generateReceipt(
-                    transaction,
-                    storeInfo.name,
-                    storeInfo.address,
-                    storeInfo.phone,
-                  );
+                    try {
+                    final pdfData = await generateReceipt(
+                      transaction,
+                      storeInfo.name,
+                      storeInfo.address,
+                      storeInfo.phone,
+                    );
 
-                  // Membuat XFile dari data PDF
-                  final xfile = XFile.fromData(
-                    pdfData,
-                    name: 'struk-${transaction.id.substring(0, 8)}.pdf',
-                    mimeType: 'application/pdf',
-                  );
+                    final xfile = XFile.fromData(
+                      pdfData,
+                      name: 'struk-${transaction.id.substring(0, 8)}.pdf',
+                      mimeType: 'application/pdf',
+                    );
 
-                  // Memanggil method shareXFiles dari kelas Share
-                  await Share.shareXFiles([xfile], text: 'Struk Pembelian');
+                    await Share.shareXFiles([xfile], text: 'Struk Pembelian');
+
+                  } catch (e) {
+                    // JIKA ADA ERROR, BARIS INI AKAN MENAMPILKANNYA DI LAYAR
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('ERROR BAGIKAN: $e'), // Tampilkan errornya
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
                 }
               },
               style: ElevatedButton.styleFrom(

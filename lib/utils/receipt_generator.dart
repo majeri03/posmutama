@@ -17,6 +17,14 @@ Future<Uint8List> generateReceipt(
   final Uint8List logoBytes = logoData.buffer.asUint8List();
   final pw.ImageProvider logoImage = pw.MemoryImage(logoBytes);
 
+  // Memuat font kustom dari assets
+  final fontData = await rootBundle.load("assets/fonts/RobotoMono-Regular.ttf");
+  final ttf = pw.Font.ttf(fontData);
+  final receiptTheme = pw.ThemeData.withFont(
+    base: ttf,
+    bold: ttf, // Anda bisa menggunakan varian Bold jika ada
+  );
+
   // Helper untuk format angka dan tanggal
   final numberFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
   final quantityFormat = NumberFormat.decimalPattern('id_ID');
@@ -36,6 +44,7 @@ Future<Uint8List> generateReceipt(
     pw.Page(
       pageFormat: PdfPageFormat.roll80, // Ukuran kertas struk thermal 80mm
       margin: const pw.EdgeInsets.all(12),
+      theme: receiptTheme,
       build: (pw.Context context) {
         return pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,

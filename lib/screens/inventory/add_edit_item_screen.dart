@@ -346,44 +346,80 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                 itemCount: _unitControllers.length,
                 itemBuilder: (context, index) {
                   final isBaseUnit = index == 0;
+                  // Dapatkan gaya teks untuk label agar konsisten
+                  final labelStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    fontWeight: FontWeight.w600
+                  );
+
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 8),
                     child: Padding(
-                      padding: const EdgeInsets.all(12.0),
+                      padding: const EdgeInsets.all(16.0),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start, // Ratakan semua ke kiri
                         children: [
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text("Satuan ${index + 1}${isBaseUnit ? ' (Dasar)' : ''}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text(
+                                "Satuan ${index + 1}${isBaseUnit ? ' (Dasar)' : ''}",
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               if (!isBaseUnit)
                                 IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                  icon: const Icon(Icons.delete_outline, color: Colors.red),
                                   onPressed: () => _removeUnitController(index),
+                                  tooltip: 'Hapus Satuan',
                                 )
                             ],
                           ),
+                          const Divider(),
+                          const SizedBox(height: 12),
+
+                          // --- PERBAIKAN UI DIMULAI DI SINI ---
+
+                          // Label untuk Nama Satuan
+                          Text("Nama Satuan", style: labelStyle),
+                          const SizedBox(height: 4),
                           TextFormField(
                             controller: _unitControllers[index]['name'],
-                            decoration: const InputDecoration(labelText: 'Nama Satuan (e.g. Pcs)'),
+                            decoration: const InputDecoration(hintText: 'Contoh: Pcs, Dus, Sak'),
                             validator: (value) => (value?.isEmpty ?? true) ? 'Wajib diisi' : null,
                           ),
+                          const SizedBox(height: 16),
+
+                          // Label untuk Harga Beli
+                          Text("Harga Beli (Modal)", style: labelStyle),
+                          const SizedBox(height: 4),
                           TextFormField(
                             controller: _unitControllers[index]['purchasePrice'],
-                            decoration: const InputDecoration(labelText: 'Harga Beli (Modal)'),
+                            decoration: const InputDecoration(hintText: '0', prefixText: 'Rp '),
                             keyboardType: TextInputType.number,
                             validator: (value) => (value?.isEmpty ?? true) ? 'Wajib diisi' : null,
                           ),
+                          const SizedBox(height: 16),
+
+                          // Label untuk Harga Jual
+                          Text("Harga Jual", style: labelStyle),
+                          const SizedBox(height: 4),
                           TextFormField(
                             controller: _unitControllers[index]['price'],
-                            decoration: const InputDecoration(labelText: 'Harga Jual'),
+                            decoration: const InputDecoration(hintText: '0', prefixText: 'Rp '),
                             keyboardType: TextInputType.number,
                             validator: (value) => (value?.isEmpty ?? true) ? 'Wajib diisi' : null,
                           ),
+                          const SizedBox(height: 16),
+
+                          // Label untuk Konversi
+                          Text("Isi / Konversi ke Satuan Dasar", style: labelStyle),
+                          const SizedBox(height: 4),
                           TextFormField(
                             controller: _unitControllers[index]['conversionRate'],
                             decoration: InputDecoration(
-                              labelText: 'Isi / Konversi ke Satuan Dasar',
+                              hintText: 'Contoh: 12 (untuk Lusin)',
                               enabled: !isBaseUnit,
                             ),
                             keyboardType: TextInputType.number,
