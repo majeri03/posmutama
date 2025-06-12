@@ -98,11 +98,60 @@ Future<Uint8List> generateReceipt(
                 pw.Text('Admin', style: const pw.TextStyle(fontSize: 8)), // Ganti dengan nama kasir jika ada
               ],
             ),
-             pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+             pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('Pelanggan:', style: const pw.TextStyle(fontSize: 8)),
-                pw.Text(transaction.customer?.name ?? 'Umum', style: const pw.TextStyle(fontSize: 8)),
+                pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('Pelanggan:', style: const pw.TextStyle(fontSize: 8)),
+                    pw.Text(
+                      transaction.customer?.name ?? 'Umum',
+                      style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
+                      textAlign: pw.TextAlign.right,
+                    ),
+                  ],
+                ),
+                // Tampilkan alamat jika ada dan tidak kosong
+                if (transaction.customer?.address != null &&
+                    transaction.customer!.address!.isNotEmpty)
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.only(top: 2),
+                    child: pw.Row(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Alamat:', style: const pw.TextStyle(fontSize: 8)),
+                        pw.Expanded(
+                          child: pw.Text(
+                            transaction.customer!.address!,
+                            style: const pw.TextStyle(fontSize: 8),
+                            textAlign: pw.TextAlign.right,
+                            maxLines: 2, // Batasi agar tidak terlalu panjang
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                // Tampilkan no. HP jika ada dan tidak kosong
+                if (transaction.customer?.phone != null &&
+                    transaction.customer!.phone!.isNotEmpty)
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.only(top: 2),
+                    child: pw.Row(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('No. HP:', style: const pw.TextStyle(fontSize: 8)),
+                        pw.Text(
+                          transaction.customer!.phone!,
+                          style: const pw.TextStyle(fontSize: 8),
+                          textAlign: pw.TextAlign.right,
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
             divider,
@@ -209,6 +258,7 @@ Future<Uint8List> generateReceipt(
             pw.Center(
               child: pw.Text('Terima Kasih Telah Berbelanja!', style: pw.TextStyle(fontSize: 8, fontStyle: pw.FontStyle.italic)),
             ),
+            pw.SizedBox(height: 8),
             pw.Center(
               child: pw.Text('Barang yang sudah dibeli tidak dapat dikembalikan.', style: const pw.TextStyle(fontSize: 7)),
             ),

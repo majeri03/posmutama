@@ -5,6 +5,10 @@ import 'package:pos_mutama/providers/item_provider.dart';
 import 'package:pos_mutama/screens/inventory/add_edit_item_screen.dart';
 import 'package:pos_mutama/utils/csv_helper.dart';
 import 'package:pos_mutama/screens/pos/scanner_screen.dart';
+import 'package:file_saver/file_saver.dart';
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:csv/csv.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
@@ -33,83 +37,150 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     super.dispose();
   }
 
+  Future<void> _downloadSampleCsv(BuildContext context) async {
+    try {
+      // 1. Siapkan data contoh
+      List<List<dynamic>> rows = [];
+      // Header
+      rows.add([
+        'item_id', 'item_name', 'item_barcode', 'stock_in_base_unit',
+        'unit_name', 'unit_purchase_price', 'unit_sell_price', 'unit_conversion_rate'
+      ]);
+      // Contoh Item 1 (Semen)
+      rows.add([
+        'uuid-semen-123', 'Semen Tiga Roda', '899123456001', '100',
+        'Sak', '50000', '55000', '1'
+      ]);
+      rows.add([
+        'uuid-semen-123', 'Semen Tiga Roda', '899123456001', '100',
+        'Palet', '3950000', '4300000', '80'
+      ]);
+      // Contoh Item 2 (Paku)
+      rows.add([
+        'uuid-paku-456', 'Paku 5 inch', '', '5000',
+        'Gram', '15', '25', '1'
+      ]);
+      rows.add([
+        'uuid-paku-456', 'Paku 5 inch', '', '5000',
+        'Kg', '14500', '24000', '1000'
+      ]);
+
+      // 2. Konversi ke format string CSV
+      String csvString = const ListToCsvConverter().convert(rows);
+
+      // 3. Simpan file menggunakan file_saver
+      await FileSaver.instance.saveFile(
+        name: 'contoh_import_item',
+        bytes: Uint8List.fromList(utf8.encode(csvString)),
+        ext: 'csv',
+        mimeType: MimeType.csv,
+      );
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('File contoh berhasil diunduh.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+       if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mengunduh file: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   // TAMBAHKAN METHOD BARU INI
   void _showCsvFormatDialog(BuildContext context) {
+    final headerStyle = const TextStyle(fontWeight: FontWeight.bold);
+    final cellPadding = const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0);
+
     showDialog(
       context: context,
       builder: (context) {
-        final headerStyle = const TextStyle(fontWeight: FontWeight.bold);
         return AlertDialog(
-          title: const Text('Contoh Format CSV untuk Impor'),
-          content: SingleChildScrollView(
+          title: const Text('Panduan Format CSV'),
+          content: SingleChildScrollView( // Agar konten dialog bisa di-scroll jika layar kecil
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                    'Gunakan format ini di file CSV Anda. Setiap baris mewakili satu satuan produk.\n'),
-                Table(
-                  border: TableBorder.all(),
-                  columnWidths: const {
-                    0: IntrinsicColumnWidth(),
-                    1: IntrinsicColumnWidth(),
-                    2: IntrinsicColumnWidth(),
-                  },
-                  children: [
-                    TableRow(children: [
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('item_id', style: headerStyle)),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('item_name', style: headerStyle)),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('item_barcode', style: headerStyle)),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('stock_in_base_unit', style: headerStyle)),
-                    ]),
-                     TableRow(children: [
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('uuid-123')),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('Semen Gresik')),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('899...')),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('100')),
-                    ]),
-                     TableRow(children: [
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('uuid-123')),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('Semen Gresik')),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('899...')),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('100')),
-                    ]),
-                  ],
+                const Text('Gunakan format ini di file CSV Anda. Setiap baris mewakili satu satuan produk.\n'),
+                // Membuat tabel bisa di-scroll ke samping
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Table(
+                    border: TableBorder.all(color: Colors.grey),
+                    // Atur lebar kolom agar sesuai konten
+                    columnWidths: const <int, TableColumnWidth>{
+                      0: IntrinsicColumnWidth(),
+                      1: IntrinsicColumnWidth(),
+                      2: IntrinsicColumnWidth(),
+                      3: IntrinsicColumnWidth(),
+                      4: IntrinsicColumnWidth(),
+                      5: IntrinsicColumnWidth(),
+                      6: IntrinsicColumnWidth(),
+                      7: IntrinsicColumnWidth(),
+                    },
+                    defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                    children: [
+                      // Baris Header
+                      TableRow(
+                        decoration: BoxDecoration(color: Colors.grey.shade200),
+                        children: [
+                          Padding(padding: cellPadding, child: Text('item_id', style: headerStyle)),
+                          Padding(padding: cellPadding, child: Text('item_name', style: headerStyle)),
+                          Padding(padding: cellPadding, child: Text('item_barcode', style: headerStyle)),
+                          Padding(padding: cellPadding, child: Text('stock_in_base_unit', style: headerStyle)),
+                          Padding(padding: cellPadding, child: Text('unit_name', style: headerStyle)),
+                          Padding(padding: cellPadding, child: Text('unit_purchase_price', style: headerStyle)),
+                          Padding(padding: cellPadding, child: Text('unit_sell_price', style: headerStyle)),
+                          Padding(padding: cellPadding, child: Text('unit_conversion_rate', style: headerStyle)),
+                        ],
+                      ),
+                      // Baris Contoh 1
+                      TableRow(children: [
+                        Padding(padding: cellPadding, child: const Text('uuid-semen-123')),
+                        Padding(padding: cellPadding, child: const Text('Semen Tiga Roda')),
+                        Padding(padding: cellPadding, child: const Text('899123456001')),
+                        Padding(padding: cellPadding, child: const Text('100')),
+                        Padding(padding: cellPadding, child: const Text('Sak')),
+                        Padding(padding: cellPadding, child: const Text('50000')),
+                        Padding(padding: cellPadding, child: const Text('55000')),
+                        Padding(padding: cellPadding, child: const Text('1')),
+                      ]),
+                      // Baris Contoh 2
+                      TableRow(children: [
+                        Padding(padding: cellPadding, child: const Text('uuid-semen-123')),
+                        Padding(padding: cellPadding, child: const Text('Semen Tiga Roda')),
+                        Padding(padding: cellPadding, child: const Text('899123456001')),
+                        Padding(padding: cellPadding, child: const Text('100')),
+                        Padding(padding: cellPadding, child: const Text('Palet')),
+                        Padding(padding: cellPadding, child: const Text('3950000')),
+                        Padding(padding: cellPadding, child: const Text('4300000')),
+                        Padding(padding: cellPadding, child: const Text('80')),
+                      ]),
+                    ],
+                  ),
                 ),
-                 const SizedBox(height: 8),
-                 Table(
-                  border: TableBorder.all(),
-                  columnWidths: const {
-                    0: IntrinsicColumnWidth(),
-                    1: IntrinsicColumnWidth(),
-                    2: IntrinsicColumnWidth(),
-                    3: IntrinsicColumnWidth(),
-                  },
-                   children: [
-                     TableRow(children: [
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('unit_name', style: headerStyle)),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('unit_purchase_price', style: headerStyle)),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('unit_sell_price', style: headerStyle)),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('unit_conversion_rate', style: headerStyle)),
-                    ]),
-                     TableRow(children: [
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('Sak')),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('50000')),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('55000')),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('1')),
-                    ]),
-                     TableRow(children: [
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('Palet')),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('4000000')),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('4400000')),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('80')),
-                    ]),
-                   ],
-                 )
+                const SizedBox(height: 12),
+                const Text('PENTING: item_id, item_name, dan stock_in_base_unit harus sama untuk item yang sama.'),
               ],
             ),
           ),
           actions: [
+            // Tombol unduh contoh
+            ElevatedButton.icon(
+              icon: const Icon(Icons.download, size: 18),
+              label: const Text('Unduh Contoh'),
+              onPressed: () => _downloadSampleCsv(context),
+            ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Tutup'),
